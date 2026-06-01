@@ -5,6 +5,8 @@
 
 #include "benet/acceptor.h"
 
+#include "benet/logger.h"
+
 namespace benet {
 namespace details {
 int create_socketfd(sa_family_t family) {

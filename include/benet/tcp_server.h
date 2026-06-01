@@ -6,6 +6,8 @@
 #ifndef BENET_TCP_SERVER_H_
 #define BENET_TCP_SERVER_H_
 
+#include <map>
+
 #include "benet/acceptor.h"
 #include "benet/callbacks.h"
 #include "benet/eventloop.h"
@@ -20,10 +22,12 @@ class TcpServer : NotCopyableOrMovable {
             bool reuse_port = false, const std::string& name = "");
   ~TcpServer();
 
-  const InetAddress& addr() const { return listen_addr_; }
-  const std::string& name() const { return name_; }
-  EventLoop* loop() const { return loop_; }
-  std::shared_ptr<EventLoopThreadPool> threadpool() { return thread_pool_; }
+  inline const InetAddress& addr() const { return listen_addr_; }
+  inline const std::string& name() const { return name_; }
+  inline EventLoop* loop() const { return loop_; }
+  inline std::shared_ptr<EventLoopThreadPool> threadpool() {
+    return thread_pool_;
+  }
 
   void Start();
 

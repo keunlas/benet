@@ -17,7 +17,6 @@
 
 #include "benet/channel.h"
 #include "benet/copy_move_type.h"
-#include "benet/logger.h"
 #include "benet/poller.h"
 #include "benet/timer_queue.h"
 #include "benet/timestamp.h"

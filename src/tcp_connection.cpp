@@ -5,6 +5,7 @@
 
 #include "benet/tcp_connection.h"
 
+#include "benet/logger.h"
 #include "benet/socket_ops.h"
 
 namespace benet {

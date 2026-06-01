@@ -1,6 +1,6 @@
-add_library(benet ${${PROJECT_NAME}_LIBRARY_TYPE})
-target_include_directories(benet PUBLIC ${PROJECT_SOURCE_DIR}/include)
-target_sources(benet PRIVATE
+add_library(benet_interface INTERFACE)
+target_include_directories(benet_interface INTERFACE ${PROJECT_SOURCE_DIR}/include)
+target_sources(benet_interface INTERFACE
   logger.cpp
   channel.cpp
   eventloop.cpp
@@ -18,3 +18,6 @@ target_sources(benet PRIVATE
   connector.cpp
   tcp_client.cpp
 )
+
+add_library(benet ${BE_LIBRARY_TYPE})
+target_link_libraries(benet PRIVATE benet_interface)

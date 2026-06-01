@@ -12,7 +12,6 @@
 #include <vector>
 
 #include "benet/copy_move_type.h"
-#include "benet/logger.h"
 #include "benet/timestamp.h"
 
 namespace benet {

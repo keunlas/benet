@@ -11,6 +11,7 @@
 #include <sstream>
 
 #include "benet/eventloop.h"
+#include "benet/logger.h"
 
 namespace {
 static constexpr int kNoneEvent{0};

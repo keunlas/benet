@@ -5,6 +5,9 @@
 
 #include "benet/tcp_server.h"
 
+#include <map>
+
+#include "benet/logger.h"
 #include "benet/socket_ops.h"
 
 namespace benet {
@@ -69,8 +72,8 @@ void TcpServer::new_connection(int sockfd, const InetAddress& peer_addr) {
   auto conn_name = name_ + "-" + listen_addr_.AsString() + "#" +
                    std::to_string(next_conn_id_++);
 
-  BELOG_INFO("TcpServer [{}] get new connection [{}] from '{}'", name_, conn_name,
-             peer_addr.AsString());
+  BELOG_INFO("TcpServer [{}] get new connection [{}] from '{}'", name_,
+             conn_name, peer_addr.AsString());
 
   InetAddress local_addr(sockets::get_local_addr(sockfd));
   auto conn = std::make_shared<TcpConnection>(io_loop, sockfd, local_addr,

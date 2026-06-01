@@ -15,7 +15,6 @@
 #include <thread>
 
 #include "benet/copy_move_type.h"
-#include "benet/logger.h"
 
 namespace benet {
 

@@ -7,6 +7,7 @@
 #include "benet/eventloop_threadpool.h"
 
 #include "benet/eventloop.h"
+#include "benet/logger.h"
 
 /* EventLoopThreadPool */
 namespace benet {

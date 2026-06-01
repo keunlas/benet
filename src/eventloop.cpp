@@ -7,6 +7,8 @@
 
 #include <sys/eventfd.h>
 
+#include "benet/logger.h"
+
 thread_local benet::EventLoop* tThreadEventLoop{nullptr};
 
 namespace {

@@ -7,6 +7,7 @@
 
 #include "benet/channel.h"
 #include "benet/eventloop.h"
+#include "benet/logger.h"
 
 namespace {
 static constexpr int kEventsSize{32};

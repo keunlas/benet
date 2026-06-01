@@ -7,18 +7,32 @@
 #define BENET_BUFFER_H
 
 #include <endian.h>
+#include <sys/uio.h>
 
 #include <algorithm>
+#include <array>
 #include <cassert>
 #include <cstdint>
 #include <cstdlib>
 #include <cstring>
+#include <memory>
 #include <string>
 #include <string_view>
 #include <vector>
 
 #include "benet/copy_move_type.h"
-#include "benet/logger.h"
+
+#ifndef BENET_BUFFER_INIT_SIZE
+#define BENET_BUFFER_INIT_SIZE (1024)  // default is 1 KiB
+#endif
+
+#ifndef BENET_BUFFER_EXTRA_SIZE
+#define BENET_BUFFER_EXTRA_SIZE (1024 * 1024 * 1)  // default is 1 MiB
+#endif
+
+#ifndef BENET_BUFFER_CHEAP_PREPEND_SIZE
+#define BENET_BUFFER_CHEAP_PREPEND_SIZE (8)  // default is 8 Bytes
+#endif
 
 namespace benet {
 
@@ -35,8 +49,9 @@ namespace benet {
 
 class Buffer : Copyable {
  public:
-  static constexpr size_t kCheapPrepend = 8;
-  static constexpr size_t kInitialSize = 1024;
+  static constexpr size_t kCheapPrepend = BENET_BUFFER_CHEAP_PREPEND_SIZE;
+  static constexpr size_t kInitialSize = BENET_BUFFER_INIT_SIZE;
+  static constexpr size_t kExtraBufSize = BENET_BUFFER_EXTRA_SIZE;
   static constexpr auto kCRLF = "\r\n";
 
  public:
@@ -198,8 +213,48 @@ class Buffer : Copyable {
 
   inline void AppendInt8(int8_t x) { Append(&x, sizeof(x)); }
 
+  inline void Prepend(const void* data, size_t len) {
+    assert(len <= PrependableBytes());
+    const char* p = static_cast<const char*>(data);
+    auto t = begin_read() - len;
+    std::copy(p, p + len, t);
+    reader_index_ -= len;
+  }
+
+  inline void Prepend(const std::string_view& sv) {
+    Prepend(sv.data(), sv.size());
+  }
+
   // read data from FD to buffer.
-  ssize_t ReadFd(int fd);
+  ssize_t ReadFd(int fd) {
+    std::unique_ptr<std::array<char, kExtraBufSize>> extra_buf;
+    size_t writable = WritableBytes();
+
+    int iovcnt = 1;
+    if (writable < kExtraBufSize) {
+      extra_buf = std::make_unique<std::array<char, kExtraBufSize>>();
+      iovcnt = 2;
+    }
+
+    std::array<iovec, 2> buffers;
+    buffers[0].iov_base = begin_write();
+    buffers[0].iov_len = writable;
+    if (iovcnt > 1) {
+      buffers[1].iov_base = extra_buf->data();
+      buffers[1].iov_len = extra_buf->size();
+    }
+
+    const ssize_t n = ::readv(fd, buffers.data(), iovcnt);
+
+    if (n >= 0 && n <= static_cast<ssize_t>(writable)) {
+      writer_index_ += n;
+    } else {
+      writer_index_ = buffer_.size();
+      Append(extra_buf->data(), n - writable);
+    }
+
+    return n;
+  }
 
  private:
   inline char* begin() { return buffer_.data(); }
