@@ -20,10 +20,11 @@
 
 !/deps/**/*
 !/docs/**/*
+/docs/html/
 
 !/test/**/*
 !/example/**/*
 
-# !/include/**/*.h
-# !/include/**/*.hpp
-# !/src/**/*.cpp
+!/include/**/*.h
+!/include/**/*.hpp
+!/src/**/*.cpp
