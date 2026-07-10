@@ -1,0 +1,4 @@
+// Distributed under the MIT License that can be found in the LICENSE file.
+// https://github.com/keunlas/benet
+//
+// Author: Keunlas <keunlaz at gmail dot com>
