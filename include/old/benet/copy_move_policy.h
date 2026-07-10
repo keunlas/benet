@@ -3,8 +3,8 @@
 //
 // Author: Keunlas <keunlaz at gmail dot com>
 
-#ifndef KEUNLAS_BENET_COPY_MOVE_POLICY_H_
-#define KEUNLAS_BENET_COPY_MOVE_POLICY_H_
+#ifndef BENET_COPY_MOVE_POLICY_H_
+#define BENET_COPY_MOVE_POLICY_H_
 
 namespace benet {
 
@@ -49,4 +49,4 @@ class NotCopyableOrMovable {
 
 }  // namespace benet
 
-#endif  // !KEUNLAS_BENET_COPY_MOVE_POLICY_H_
+#endif  // !BENET_COPY_MOVE_POLICY_H_
