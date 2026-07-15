@@ -14,7 +14,7 @@
 #include <string>
 #include <thread>
 
-#include "benet/copy_move_type.h"
+#include "benet/copy_move_policy.h"
 
 namespace benet {
 

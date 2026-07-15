@@ -20,7 +20,7 @@
 #include <string_view>
 #include <vector>
 
-#include "benet/copy_move_type.h"
+#include "benet/copy_move_policy.h"
 
 #ifndef BENET_BUFFER_INIT_SIZE
 #define BENET_BUFFER_INIT_SIZE (1024)  // default is 1 KiB

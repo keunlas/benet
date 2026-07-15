@@ -9,7 +9,7 @@
 #include <netinet/in.h>
 #include <netinet/tcp.h>
 
-#include "benet/copy_move_type.h"
+#include "benet/copy_move_policy.h"
 #include "benet/inet_address.h"
 
 namespace benet {

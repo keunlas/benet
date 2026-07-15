@@ -11,7 +11,7 @@
 #include <unordered_map>
 #include <vector>
 
-#include "benet/copy_move_type.h"
+#include "benet/copy_move_policy.h"
 #include "benet/timestamp.h"
 
 namespace benet {

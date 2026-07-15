@@ -16,7 +16,7 @@
 #include <vector>
 
 #include "benet/channel.h"
-#include "benet/copy_move_type.h"
+#include "benet/copy_move_policy.h"
 #include "benet/poller.h"
 #include "benet/timer_queue.h"
 #include "benet/timestamp.h"

@@ -3,12 +3,12 @@
 //
 // Author: Keunlas <keunlaz at gmail dot com>
 
-#ifndef BENET_ACCEPTOR_H
-#define BENET_ACCEPTOR_H
+#ifndef KEUNLAS_BENET_ACCEPTOR_H_
+#define KEUNLAS_BENET_ACCEPTOR_H_
 
 #include <functional>
 
-#include "benet/copy_move_type.h"
+#include "benet/copy_move_policy.h"
 #include "benet/eventloop.h"
 #include "benet/socket.h"
 
@@ -16,7 +16,8 @@ namespace benet {
 
 class Acceptor : NotCopyableOrMovable {
  public:
-  using NewConnCallback = std::function<void(int sockfd, const InetAddress&)>;
+  using NewConnCallback =
+      std::function<void(int /* sockfd */, const InetAddress& /* addr */)>;
 
  public:
   Acceptor(EventLoop* loop, const InetAddress& addr, bool reuseport);
@@ -43,4 +44,4 @@ class Acceptor : NotCopyableOrMovable {
 
 }  // namespace benet
 
-#endif  // !BENET_ACCEPTOR_H
+#endif  // !KEUNLAS_BENET_ACCEPTOR_H_
