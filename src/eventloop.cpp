@@ -9,11 +9,11 @@
 
 #include "benet/logger.h"
 
+/// @brief 当前线程的事件循环指针
 thread_local benet::EventLoop* tThreadEventLoop{nullptr};
 
-namespace {
+/// @brief 轮询超时时间
 static constexpr int kPollTimeoutMs = 8192;
-}  // namespace
 
 namespace benet::details {
 int create_eventfd() {
@@ -30,7 +30,7 @@ void close_eventfd(int fd) { ::close(fd); }
 namespace benet {
 
 EventLoop::EventLoop()
-    : wakeup_fd_(details::create_eventfd()),
+    : wakeup_fd_(::eventfd(0, EFD_NONBLOCK | EFD_CLOEXEC)),
       wakeup_channel_(std::make_unique<Channel>(this, wakeup_fd_)),
       timer_queue_(std::make_unique<TimerQueue>(this)) {
   BELOG_DEBUG("EventLoop {} created", reinterpret_cast<const void*>(this));
@@ -49,7 +49,7 @@ EventLoop::~EventLoop() {
   assert(running_.load() == false);
   wakeup_channel_->DisableAllEvent();
   wakeup_channel_->RemoveFromLoop();
-  details::close_eventfd(wakeup_fd_);
+  ::close(wakeup_fd_);
   tThreadEventLoop = nullptr;
 }
 

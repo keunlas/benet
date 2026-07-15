@@ -78,8 +78,8 @@ class EventLoop : NotCopyableOrMovable {
   // std::vector<std::function<void()>> pendings_{};
   // std::mutex pendings_mutex_{};
 
-  // int wakeup_fd_;
-  // std::unique_ptr<Channel> wakeup_channel_;
+  int wakeup_fd_;
+  std::unique_ptr<Channel> wakeup_channel_;
 
   // std::unique_ptr<TimerQueue> timer_queue_;
 };
