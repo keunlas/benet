@@ -5,6 +5,9 @@
 
 #include "benet/socket.h"
 
+#include <netinet/in.h>
+#include <netinet/tcp.h>
+
 #include "benet/logger.h"
 #include "benet/socket_ops.h"
 
@@ -34,9 +37,9 @@ void Socket::SetTcpNodelay(bool on) {
   int optval = on ? 1 : 0;
   int ret = ::setsockopt(sockfd_, IPPROTO_TCP, TCP_NODELAY, &optval,
                          static_cast<socklen_t>(sizeof(optval)));
-  if (ret < 0 && on) {
-    BELOG_ERROR("Failed to set sockfd {} TCP_NODELAY, errno {}: {}", sockfd_,
-                errno, ERRNO_MSG);
+  if (ret < 0) {
+    BELOG_ERROR("Failed to {} TCP_NODELAY on sockfd {}, errno {}: {}",
+                on ? "enable" : "disable", sockfd_, errno, ERRNO_MSG);
   }
 }
 
@@ -44,9 +47,9 @@ void Socket::SetReuseAddr(bool on) {
   int optval = on ? 1 : 0;
   int ret = ::setsockopt(sockfd_, SOL_SOCKET, SO_REUSEADDR, &optval,
                          static_cast<socklen_t>(sizeof(optval)));
-  if (ret < 0 && on) {
-    BELOG_ERROR("Failed to set sockfd {} SO_REUSEADDR, errno {}: {}", sockfd_,
-                errno, ERRNO_MSG);
+  if (ret < 0) {
+    BELOG_ERROR("Failed to {} SO_REUSEADDR on sockfd {}, errno {}: {}",
+                on ? "enable" : "disable", sockfd_, errno, ERRNO_MSG);
   }
 }
 
@@ -55,9 +58,9 @@ void Socket::SetReusePort(bool on) {
   int optval = on ? 1 : 0;
   int ret = ::setsockopt(sockfd_, SOL_SOCKET, SO_REUSEPORT, &optval,
                          static_cast<socklen_t>(sizeof(optval)));
-  if (ret < 0 && on) {
-    BELOG_ERROR("Failed to set sockfd {} SO_REUSEPORT, errno {}: {}", sockfd_,
-                errno, ERRNO_MSG);
+  if (ret < 0) {
+    BELOG_ERROR("Failed to {} SO_REUSEPORT on sockfd {}, errno {}: {}",
+                on ? "enable" : "disable", sockfd_, errno, ERRNO_MSG);
   }
 #else
   if (on) {
@@ -70,9 +73,9 @@ void Socket::SetKeepAlive(bool on) {
   int optval = on ? 1 : 0;
   int ret = ::setsockopt(sockfd_, SOL_SOCKET, SO_KEEPALIVE, &optval,
                          static_cast<socklen_t>(sizeof(optval)));
-  if (ret < 0 && on) {
-    BELOG_ERROR("Failed to set sockfd {} SO_KEEPALIVE, errno {}: {}", sockfd_,
-                errno, ERRNO_MSG);
+  if (ret < 0) {
+    BELOG_ERROR("Failed to {} SO_KEEPALIVE on sockfd {}, errno {}: {}",
+                on ? "enable" : "disable", sockfd_, errno, ERRNO_MSG);
   }
 }
 

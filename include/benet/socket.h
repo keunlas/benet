@@ -3,11 +3,8 @@
 //
 // Author: Keunlas <keunlaz at gmail dot com>
 
-#ifndef BENET_SOCKET_H_
-#define BENET_SOCKET_H_
-
-#include <netinet/in.h>
-#include <netinet/tcp.h>
+#ifndef KEUNLAS_BENET_SOCKET_H_
+#define KEUNLAS_BENET_SOCKET_H_
 
 #include "benet/copy_move_policy.h"
 #include "benet/inet_address.h"
@@ -19,17 +16,31 @@ class Socket : NotCopyableOrMovable {
   explicit Socket(int sockfd) : sockfd_(sockfd) {}
   ~Socket();
 
+  /// @brief 内部文件描述符
   int fd() const { return sockfd_; }
 
+  /// @brief 绑定地址
   void Bind(const InetAddress& local_addr);
+
+  /// @brief 监听已经绑定的地址
   void Listen();
+
+  /// @brief 接受并填写对端地址
   int Accept(InetAddress* peer_addr);
 
+  /// @brief 关闭写
   void ShutdownWrite();
 
+  /// @brief 设置 TCP 无延迟传输
   void SetTcpNodelay(bool on);
+
+  /// @brief 设置地址复用
   void SetReuseAddr(bool on);
+
+  /// @brief 设置端口复用
   void SetReusePort(bool on);
+
+  /// @brief 设置 TCP Keep-Alive 机制
   void SetKeepAlive(bool on);
 
  private:
@@ -38,4 +49,4 @@ class Socket : NotCopyableOrMovable {
 
 }  // namespace benet
 
-#endif  // !BENET_SOCKET_H_
+#endif  // !KEUNLAS_BENET_SOCKET_H_

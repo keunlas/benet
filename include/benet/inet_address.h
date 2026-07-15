@@ -22,7 +22,7 @@ class InetAddress : Copyable {
   explicit InetAddress(const sockaddr_storage& addr) : addr_(addr) {}
 
   /// @brief 地址族
-  sa_family_t family() const;
+  unsigned short /* sa_family_t */ family() const;
 
   /// @brief 通用 socket 地址
   sockaddr* addr();

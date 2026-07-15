@@ -64,7 +64,9 @@ std::string InetAddress::AsString() const {
   return std::format("{}:{}", ip(), port());
 }
 
-sa_family_t InetAddress::family() const { return addr_.ss_family; }
+unsigned short /* sa_family_t */ InetAddress::family() const {
+  return addr_.ss_family;
+}
 
 sockaddr* InetAddress::addr() { return reinterpret_cast<sockaddr*>(&addr_); }
 
