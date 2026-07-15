@@ -9,13 +9,14 @@
 
 #include "benet/logger.h"
 
-/// @brief 当前线程的事件循环指针
 thread_local benet::EventLoop* tThreadEventLoop{nullptr};
 
-/// @brief 轮询超时时间
+namespace {
 static constexpr int kPollTimeoutMs = 8192;
+}  // namespace
 
-namespace benet::details {
+namespace benet {
+namespace details {
 int create_eventfd() {
   // non-block fd
   int eventfd = ::eventfd(0, EFD_NONBLOCK | EFD_CLOEXEC);
@@ -25,12 +26,22 @@ int create_eventfd() {
   return eventfd;
 }
 void close_eventfd(int fd) { ::close(fd); }
-}  // namespace benet::details
+}  // namespace details
 
-namespace benet {
+EventLoop* EventLoop::CurrentThreadEventLoop() { return tThreadEventLoop; }
+
+void EventLoop::AssertInLoopThread() const {
+  if (!IsInLoopThread()) {
+    BELOG_CRITICAL("Current thread is not this loop thread");
+  }
+}
+
+bool EventLoop::IsInLoopThread() const {
+  return thread_id_ == std::this_thread::get_id();
+}
 
 EventLoop::EventLoop()
-    : wakeup_fd_(::eventfd(0, EFD_NONBLOCK | EFD_CLOEXEC)),
+    : wakeup_fd_(details::create_eventfd()),
       wakeup_channel_(std::make_unique<Channel>(this, wakeup_fd_)),
       timer_queue_(std::make_unique<TimerQueue>(this)) {
   BELOG_DEBUG("EventLoop {} created", reinterpret_cast<const void*>(this));
@@ -49,7 +60,7 @@ EventLoop::~EventLoop() {
   assert(running_.load() == false);
   wakeup_channel_->DisableAllEvent();
   wakeup_channel_->RemoveFromLoop();
-  ::close(wakeup_fd_);
+  details::close_eventfd(wakeup_fd_);
   tThreadEventLoop = nullptr;
 }
 
@@ -132,60 +143,45 @@ void EventLoop::handle_wakeup() {
   }
 }
 
-// void EventLoop::UpdateChannel(Channel* channel) {
-//   assert(channel->loop() == this);
-//   AssertInLoopThread();
-//   poller_->UpdateChannel(channel);
-// }
-
-// void EventLoop::RemoveChannel(Channel* channel) {
-//   assert(channel->loop() == this);
-//   AssertInLoopThread();
-//   if (event_handing_.load()) {
-//     assert(current_active_channel_ == channel ||
-//            std::find(active_channels_.begin(), active_channels_.end(),
-//                      channel) == active_channels_.end());
-//   }
-//   poller_->RemoveChannel(channel);
-// }
-
-// bool EventLoop::HasChannel(Channel* channel) {
-//   return poller_->HasChannel(channel);
-// }
-
-// TimerWeakPtr EventLoop::RunAt(TimePoint time, std::function<void()> cb) {
-//   return timer_queue_->AddTimer(std::move(cb), time, 0.0);
-// }
-
-// TimerWeakPtr EventLoop::RunAfter(double delay, std::function<void()> cb) {
-//   auto now = TimeClock::now();
-//   now += std::chrono::nanoseconds(static_cast<int64_t>(delay * 1e9));
-//   return timer_queue_->AddTimer(std::move(cb), now, 0.0);
-// }
-
-// TimerWeakPtr EventLoop::RunEvery(double interval, std::function<void()> cb) {
-//   auto now = TimeClock::now();
-//   now += std::chrono::nanoseconds(static_cast<int64_t>(interval * 1e9));
-//   return timer_queue_->AddTimer(std::move(cb), now, interval);
-// }
-
-// void EventLoop::CancelTimer(TimerWeakPtr timer_wk) {
-//   timer_queue_->CancelTimer(timer_wk);
-// }
-
-/// @brief 获取当前线程的事件循环指针
-EventLoop* EventLoop::CurrentThreadEventLoop() { return tThreadEventLoop; }
-
-/// @brief 若当前线程的事件循环不是自己时崩溃掉程序
-void EventLoop::AssertInLoopThread() const {
-  if (!IsInLoopThread()) {
-    BELOG_CRITICAL("Current thread is not this loop thread");
-  }
+void EventLoop::UpdateChannel(Channel* channel) {
+  assert(channel->loop() == this);
+  AssertInLoopThread();
+  poller_->UpdateChannel(channel);
 }
 
-/// @brief 获知当前线程的事件循环是否是自己
-bool EventLoop::IsInLoopThread() const {
-  return thread_id_ == std::this_thread::get_id();
+void EventLoop::RemoveChannel(Channel* channel) {
+  assert(channel->loop() == this);
+  AssertInLoopThread();
+  if (event_handing_.load()) {
+    assert(current_active_channel_ == channel ||
+           std::find(active_channels_.begin(), active_channels_.end(),
+                     channel) == active_channels_.end());
+  }
+  poller_->RemoveChannel(channel);
+}
+
+bool EventLoop::HasChannel(Channel* channel) {
+  return poller_->HasChannel(channel);
+}
+
+TimerWeakPtr EventLoop::RunAt(TimePoint time, std::function<void()> cb) {
+  return timer_queue_->AddTimer(std::move(cb), time, 0.0);
+}
+
+TimerWeakPtr EventLoop::RunAfter(double delay, std::function<void()> cb) {
+  auto now = TimeClock::now();
+  now += std::chrono::nanoseconds(static_cast<int64_t>(delay * 1e9));
+  return timer_queue_->AddTimer(std::move(cb), now, 0.0);
+}
+
+TimerWeakPtr EventLoop::RunEvery(double interval, std::function<void()> cb) {
+  auto now = TimeClock::now();
+  now += std::chrono::nanoseconds(static_cast<int64_t>(interval * 1e9));
+  return timer_queue_->AddTimer(std::move(cb), now, interval);
+}
+
+void EventLoop::CancelTimer(TimerWeakPtr timer_wk) {
+  timer_queue_->CancelTimer(timer_wk);
 }
 
 }  // namespace benet
