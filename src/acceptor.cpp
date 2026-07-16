@@ -39,7 +39,7 @@ Acceptor::Acceptor(EventLoop* loop, const InetAddress& addr, bool reuseport)
   accept_socket_.SetReuseAddr(true);
   accept_socket_.SetReusePort(reuseport);
   accept_socket_.Bind(addr);
-  accept_channel_->BindReadCallback([this]() {
+  accept_channel_->BindReadCallback([this](TimePoint) {
     loop_->AssertInLoopThread();
     InetAddress peer_addr;
 
