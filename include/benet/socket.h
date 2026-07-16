@@ -11,6 +11,10 @@
 
 namespace benet {
 
+  /**
+   * @brief 底层 Socket 封装，支持 TCP。
+   * 
+   */
 class Socket : NotCopyableOrMovable {
  public:
   explicit Socket(int sockfd) : sockfd_(sockfd) {}

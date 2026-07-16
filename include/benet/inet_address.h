@@ -15,8 +15,13 @@
 
 namespace benet {
 
+/**
+ * @brief 底层 IP 地址封装，支持 ipv4 和 ipv6。
+ *
+ */
 class InetAddress : Copyable {
  public:
+  InetAddress() {}
   InetAddress(uint16_t port) : InetAddress(port, "0.0.0.0") {}
   InetAddress(uint16_t port, const std::string& ip, bool ipv6 = false);
   explicit InetAddress(const sockaddr_storage& addr) : addr_(addr) {}
