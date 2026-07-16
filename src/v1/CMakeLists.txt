@@ -13,6 +13,7 @@ target_sources(benet_interface INTERFACE
   socket.cpp
   buffer.cpp
   acceptor.cpp
+  eventloop_thread.cpp
   eventloop_threadpool.cpp
   tcp_connection.cpp
   tcp_server.cpp

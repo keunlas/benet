@@ -11,9 +11,10 @@ target_sources(benet_interface INTERFACE
   inet_address.cpp
   socket_ops.cpp
   socket.cpp
-  # buffer.cpp
+  buffer.cpp
   acceptor.cpp
-  # eventloop_threadpool.cpp
+  eventloop_thread.cpp
+  eventloop_threadpool.cpp
   # tcp_connection.cpp
   # tcp_server.cpp
   # connector.cpp

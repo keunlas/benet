@@ -13,6 +13,7 @@
 
 namespace benet {
 class Buffer;
+class EventLoop;
 class InetAddress;
 }  // namespace benet
 
@@ -21,6 +22,9 @@ namespace benet {
 /// @brief Acceptor 用于处理新连接的 connfd 的回调函数类型
 using NewConnCallback =
     std::function<void(int /* connfd */, const InetAddress& /* addr */)>;
+
+/// @brief EventLoopThread 用于初始化的回调函数类型
+using ThreadInitCallback = std::function<void(EventLoop*)>;
 
 // class TcpConnection;
 // using TcpConnectionPtr = std::shared_ptr<TcpConnection>;
