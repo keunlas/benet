@@ -91,7 +91,6 @@ class TcpConnection : NotCopyableOrMovable,
   void handle_error();
 
   void set_state(State s) { state_.store(s); }
-
   const std::string& state_as_string() const;
 
  private:
@@ -105,7 +104,7 @@ class TcpConnection : NotCopyableOrMovable,
   std::atomic<State> state_{State::Connecting};
   std::atomic_bool reading_{true};
 
-  size_t high_water_mark_;
+  size_t high_water_mark_{128 * 1024 * 1024};
   HighWaterMarkCallback on_high_water_mark_;
   ConnectionCallback on_connection_;
   CloseCallback on_close_;

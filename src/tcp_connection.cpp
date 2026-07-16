@@ -19,8 +19,7 @@ TcpConnection::TcpConnection(EventLoop* loop, int sockfd,
       socket_(std::make_unique<Socket>(sockfd)),
       channel_(std::make_unique<Channel>(loop_, sockfd)),
       local_addr_(local_addr),
-      peer_addr_(peer_addr),
-      high_water_mark_(128 * 1024 * 1024) {
+      peer_addr_(peer_addr) {
   using std::placeholders::_1;
   channel_->BindReadCallback(std::bind(&TcpConnection::handle_read, this, _1));
   channel_->BindWriteCallback(std::bind(&TcpConnection::handle_write, this));
@@ -219,7 +218,7 @@ void TcpConnection::handle_write() {
   loop_->AssertInLoopThread();
 
   if (!channel_->IsWriteEvent()) {
-    BELOG_TRACE("Channel fd {} already down, no more writing");
+    BELOG_DEBUG("Channel fd {} already down, no more writing");
     return;
   }
 
@@ -229,6 +228,7 @@ void TcpConnection::handle_write() {
   if (n <= 0) {
     BELOG_ERROR("Channel fd {} write failed, errno {}: {}", channel_->fd(),
                 errno, ERRNO_MSG);
+    handle_error();
     return;
   }
 
@@ -281,7 +281,6 @@ const std::string& TcpConnection::state_as_string() const {
   static const std::string connected("Connected");
   static const std::string disconnecting("Disconnecting");
   static const std::string unknow("unknown state");
-
   switch (state_) {
     case State::Disconnected:
       return disconnected;
