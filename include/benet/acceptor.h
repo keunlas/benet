@@ -9,6 +9,7 @@
 #include <functional>
 #include <memory>
 
+#include "benet/callbacks.h"
 #include "benet/copy_move_policy.h"
 #include "benet/socket.h"
 
@@ -19,19 +20,22 @@ class Channel;
 
 namespace benet {
 
+/**
+ * @brief 接受器，用来接受新的 TCP 连接
+ *
+ */
 class Acceptor : NotCopyableOrMovable {
- public:
-  using NewConnCallback =
-      std::function<void(int /* sockfd */, const InetAddress& /* addr */)>;
-
  public:
   Acceptor(EventLoop* loop, const InetAddress& addr, bool reuseport);
   ~Acceptor();
 
+  /// @brief 开始监听并接收新的 TCP 连接
   void Listen();
 
+  /// @brief 获取是否正在监听中
   bool IsListening() const { return listening_; }
 
+  /// @brief 绑定新连接 connfd 的处理回调函数
   void BindNewConnCallback(const NewConnCallback& cb);
 
  private:
