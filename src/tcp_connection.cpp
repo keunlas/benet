@@ -254,11 +254,9 @@ void TcpConnection::handle_write() {
 void TcpConnection::handle_close() {
   loop_->AssertInLoopThread();
 
-  SPDLOG_TRACE("Channel fd {}, state = {}", channel_->fd(), state_as_string());
-
   auto curr_state = state_.load();
   if (curr_state != State::Connected && curr_state != State::Disconnecting) {
-    SPDLOG_CRITICAL(
+    BELOG_CRITICAL(
         "Channel fd {} close, but TcpConnection not connected or already close",
         channel_->fd());
   }

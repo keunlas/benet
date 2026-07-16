@@ -28,7 +28,7 @@ using NewConnCallback =
 /// @brief EventLoopThread 用于初始化的回调函数类型
 using ThreadInitCallback = std::function<void(EventLoop* /* eventloop */)>;
 
-/// @brief TcpConnection 连接建立完成回调
+/// @brief TcpConnection 连接建立或准备关闭时回调函数
 using ConnectionCallback = std::function<void(const TcpConnectionPtr&)>;
 
 /// @brief TcpConnection 连接关闭回调
