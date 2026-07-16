@@ -43,7 +43,7 @@ EventLoop::EventLoop()
     : wakeup_fd_(details::create_eventfd()),
       wakeup_channel_(std::make_unique<Channel>(this, wakeup_fd_)),
       timer_queue_(std::make_unique<TimerQueue>(this)) {
-  BELOG_DEBUG("EventLoop {} created", reinterpret_cast<const void*>(this));
+  BELOG_TRACE("EventLoop {} created", reinterpret_cast<const void*>(this));
   if (tThreadEventLoop) {
     BELOG_CRITICAL("A EventLoop {} already existed in this thread",
                    reinterpret_cast<const void*>(tThreadEventLoop));
@@ -104,7 +104,7 @@ void EventLoop::Stop() {
   if (!IsInLoopThread()) {
     set_wakeup();
   }
-  BELOG_DEBUG("EventLoop {} quited", reinterpret_cast<const void*>(this));
+  BELOG_TRACE("EventLoop {} quited", reinterpret_cast<const void*>(this));
 }
 
 void EventLoop::RunInLoop(std::function<void()> cb) {

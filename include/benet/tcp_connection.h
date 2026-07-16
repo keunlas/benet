@@ -46,8 +46,8 @@ class TcpConnection : NotCopyableOrMovable,
   bool IsConnected() const { return state_.load() == State::Connected; }
   bool IsDisconnected() const { return state_.load() == State::Disconnected; }
 
+  void Send(std::string_view msg);
   void Send(const void* msg, size_t len);
-  void Send(const std::string_view& msg);
   void Send(Buffer* buf);
 
   void Shutdown();
@@ -82,7 +82,6 @@ class TcpConnection : NotCopyableOrMovable,
  private:
   enum class State { Disconnected, Connecting, Connected, Disconnecting };
 
-  void send_in_loop(const std::string_view& msg);
   void send_in_loop(const void* msg, size_t len);
 
   void handle_read(TimePoint receive_time);
