@@ -22,6 +22,7 @@ int create_timerfd() {
   if (timerfd < 0) {
     BELOG_CRITICAL("Failed to create timerfd, errno {}: {}", errno, ERRNO_MSG);
   }
+  BELOG_TRACE("Created timerfd {}", timerfd);
   return timerfd;
 }
 

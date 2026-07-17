@@ -20,9 +20,13 @@ int create_eventfd() {
   if (eventfd < 0) {
     BELOG_CRITICAL("Failed to create eventfd: {}", ERRNO_MSG);
   }
+  BELOG_TRACE("Created eventfd {}", eventfd);
   return eventfd;
 }
-void close_eventfd(int fd) { ::close(fd); }
+void close_eventfd(int fd) {
+  ::close(fd);
+  // BELOG_TRACE("Closed eventfd {}", fd);
+}
 }  // namespace benet::details
 
 namespace benet {

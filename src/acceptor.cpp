@@ -18,6 +18,7 @@ int create_socketfd(sa_family_t family) {
     BELOG_CRITICAL("Failed to create socket fd, errno {}: {}", errno,
                    ERRNO_MSG);
   }
+  BELOG_TRACE("Created socketfd {}", sockfd);
   return sockfd;
 }
 int create_idlefd() {
@@ -25,6 +26,7 @@ int create_idlefd() {
   if (fd < 0) {
     BELOG_CRITICAL("Failed to create idle fd, errno {}: {}", errno, ERRNO_MSG);
   }
+  BELOG_TRACE("Created idlefd {}", fd);
   return fd;
 }
 }  // namespace benet::details
