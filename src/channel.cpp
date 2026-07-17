@@ -39,12 +39,11 @@ void Channel::HandleEvent(TimePoint recv_time) {
   }
 
   event_handing_ = true;
-  BELOG_TRACE("Channel fd {} have revents = {}: {}", fd_, revents_,
-              events_as_string(revents_));
+  BELOG_TRACE("events '{}' occured in fd {}", events_as_string(revents_), fd_);
   {
     // Conduct error (errno will be set)
     if (revents_ & EPOLLERR) {
-      BELOG_WARN("Channel fd {} EPOLLERR: {}", fd_, ERRNO_MSG);
+      BELOG_WARN("EPOLLERR: '{}' occured in fd {}", ERRNO_MSG, fd_);
       if (on_error_) on_error_();
     }
 
@@ -74,6 +73,7 @@ std::string Channel::events_as_string(int ev) {
   if (ev & EPOLLHUP) str.append("HUP ");
   if (ev & EPOLLRDHUP) str.append("RDHUP ");
   if (ev & EPOLLERR) str.append("ERR ");
+  if (!str.empty() && str.back() == ' ') str.pop_back();
   return str;
 }
 

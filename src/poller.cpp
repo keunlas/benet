@@ -37,7 +37,7 @@ EPoller::EPoller(EventLoop* loop)
 EPoller::~EPoller() { details::close_epollfd(epoll_fd_); }
 
 TimePoint EPoller::Poll(int timeout_ms, std::vector<Channel*>& actives) {
-  BELOG_TRACE("Current fd counts is {}", channels_.size());
+  // BELOG_TRACE("Current fd counts is {}", channels_.size());
 
   int n_readys = ::epoll_wait(epoll_fd_, events_.data(),
                               static_cast<int>(events_.size()), timeout_ms);
@@ -51,7 +51,7 @@ TimePoint EPoller::Poll(int timeout_ms, std::vector<Channel*>& actives) {
       events_.resize(static_cast<size_t>(1.5 * n_readys));
     }
   } else if (n_readys == 0) {
-    BELOG_TRACE("EPoller timeout, nothing happened");
+    // BELOG_TRACE("EPoller timeout, nothing happened");
   } else {
     if (errno != EINTR) {
       BELOG_CRITICAL("Failed to epoll wait: {}", ERRNO_MSG);
