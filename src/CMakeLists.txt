@@ -15,8 +15,8 @@ target_sources(benet_interface INTERFACE
   acceptor.cpp
   eventloop_thread.cpp
   eventloop_threadpool.cpp
-  # tcp_connection.cpp
-  # tcp_server.cpp
+  tcp_connection.cpp
+  tcp_server.cpp
   # connector.cpp
   # tcp_client.cpp
 )

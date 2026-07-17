@@ -13,13 +13,18 @@
 
 namespace benet {
 
-EventLoopThreadPool::EventLoopThreadPool(EventLoop* base, int n_threads,
+EventLoopThreadPool::EventLoopThreadPool(EventLoop* base,
                                          const std::string& name)
-    : base_loop_(base), num_threads_(n_threads), name_(name) {}
+    : base_loop_(base), name_(name) {}
 
 EventLoopThreadPool::~EventLoopThreadPool() {
   // Don't delete EventLoop,
   // it's stack variable in EventLoopThread's entry function.
+}
+
+void EventLoopThreadPool::InitThreadsNumber(int n_threads) {
+  assert(!started_);
+  num_threads_ = n_threads;
 }
 
 void EventLoopThreadPool::Start(const ThreadInitCallback& init_cb) {
@@ -28,7 +33,7 @@ void EventLoopThreadPool::Start(const ThreadInitCallback& init_cb) {
   started_ = true;
 
   for (int i = 0; i < num_threads_; ++i) {
-    auto thread_name = std::format("{}#{}", name_, i);
+    auto thread_name = std::format("{}/{}", name_, i);
     auto* thread_ptr = new EventLoopThread(init_cb, thread_name);
     threads_.emplace_back(thread_ptr);
     loops_.push_back(thread_ptr->Start());
