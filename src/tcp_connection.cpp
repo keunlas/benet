@@ -90,8 +90,11 @@ void TcpConnection::send_in_loop(const void* msg, size_t len) {
       }
     } else {
       n_wrote = 0;
-      if (errno != EAGAIN) {
+      if (errno != EAGAIN || errno != EWOULDBLOCK) {
         BELOG_ERROR("Failed send directly in loop: {}", ERRNO_MSG);
+        if (errno == EINTR) {
+          // [TODO] retry to send
+        }
         if (errno == EPIPE || errno == ECONNRESET) {
           fault_error = true;
         }
@@ -100,7 +103,7 @@ void TcpConnection::send_in_loop(const void* msg, size_t len) {
   }
 
   if (fault_error) {
-    handle_error();
+    handle_error_with_code(errno);
     handle_close();
     return;
   }
@@ -210,9 +213,15 @@ void TcpConnection::handle_read(TimePoint receive_time) {
   } else if (n == 0) {
     handle_close();
   } else {
+    if (errno == EAGAIN || errno == EWOULDBLOCK) {
+      return;  // because connfd is nonblocking
+    }
+    if (errno == EINTR) {
+      return;  // [TODO] retry it
+    }
     BELOG_ERROR("Failed to read Channel fd {}, errno {}: {}", channel_->fd(),
                 errno, ERRNO_MSG);
-    handle_error();
+    handle_error_with_code(errno);
     handle_close();
   }
 }
@@ -229,9 +238,15 @@ void TcpConnection::handle_write() {
                       output_buffer_.ReadableBytes());
 
   if (n <= 0) {
-    BELOG_ERROR("Channel fd {} write failed, errno {}: {}", channel_->fd(),
+    if (errno == EAGAIN || errno == EWOULDBLOCK) {
+      return;  // because connfd is nonblocking
+    }
+    if (errno == EINTR) {
+      return;  // [TODO] retry it
+    }
+    BELOG_ERROR("Failed to write Channel fd {}, errno {}: {}", channel_->fd(),
                 errno, ERRNO_MSG);
-    handle_error();
+    handle_error_with_code(errno);
     handle_close();
     return;
   }
@@ -260,9 +275,10 @@ void TcpConnection::handle_close() {
 
   auto curr_state = state_.load();
   if (curr_state != State::Connected && curr_state != State::Disconnecting) {
-    BELOG_CRITICAL(
+    BELOG_ERROR(
         "Channel fd {} close, but TcpConnection not connected or already close",
         channel_->fd());
+    return;
   }
 
   set_state(State::Disconnected);
@@ -277,6 +293,13 @@ void TcpConnection::handle_error() {
   int errcode = sockets::get_socket_error(channel_->fd());
   BELOG_ERROR("TcpConnection at sockfd {} has SO_ERROR, errno {}: {}",
               channel_->fd(), errcode, ERRCODE_MSG(errcode));
+}
+
+void TcpConnection::handle_error_with_code(int errcode) {
+  int so_error = sockets::get_socket_error(channel_->fd());
+  BELOG_ERROR("TcpConnection at sockfd {} error, errno {}: {}, SO_ERROR {}: {}",
+              channel_->fd(), errcode, ERRCODE_MSG(errcode), so_error,
+              ERRCODE_MSG(so_error));
 }
 
 const std::string& TcpConnection::state_as_string() const {

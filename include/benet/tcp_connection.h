@@ -88,6 +88,7 @@ class TcpConnection : NotCopyableOrMovable,
   void handle_write();
   void handle_close();
   void handle_error();
+  void handle_error_with_code(int errcode);
 
   void set_state(State s) { state_.store(s); }
   const std::string& state_as_string() const;
