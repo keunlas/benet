@@ -117,7 +117,7 @@ class Buffer : Copyable {
   }
 
   inline void Retrieve(size_t len) {
-    assert(len >= ReadableBytes());
+    assert(ReadableBytes() >= len);
     reader_index_ += len;
   }
 
@@ -133,7 +133,7 @@ class Buffer : Copyable {
   }
 
   inline std::string RetrieveAsString(size_t len) {
-    assert(len >= ReadableBytes());
+    assert(ReadableBytes() >= len);
     std::string result(Peek(), len);
     Retrieve(len);
     return result;
