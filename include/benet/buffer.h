@@ -26,10 +26,6 @@
 #define BENET_BUFFER_INIT_SIZE (1024)  // default is 1 KiB
 #endif
 
-#ifndef BENET_BUFFER_EXTRA_SIZE
-#define BENET_BUFFER_EXTRA_SIZE (1024 * 1024 * 1)  // default is 1 MiB
-#endif
-
 #ifndef BENET_BUFFER_CHEAP_PREPEND_SIZE
 #define BENET_BUFFER_CHEAP_PREPEND_SIZE (8)  // default is 8 Bytes
 #endif
@@ -51,7 +47,7 @@ class Buffer : Copyable {
  public:
   static constexpr size_t kCheapPrepend = BENET_BUFFER_CHEAP_PREPEND_SIZE;
   static constexpr size_t kInitialSize = BENET_BUFFER_INIT_SIZE;
-  static constexpr size_t kExtraBufSize = BENET_BUFFER_EXTRA_SIZE;
+  static constexpr size_t kExtraBufSize = 65536;  // 64KiB
   static constexpr auto kCRLF = "\r\n";
 
  public:
@@ -70,16 +66,16 @@ class Buffer : Copyable {
   inline T PeekInt() const {
     static_assert(std::is_integral_v<T>, "T must be integral type");
     assert(ReadableBytes() >= sizeof(T));
-    T val = 0;
+    std::make_unsigned_t<T> val = 0;
     std::memcpy(&val, Peek(), sizeof(T));
     if constexpr (sizeof(T) == 8) {
-      return static_cast<T>(be64toh(static_cast<int64_t>(val)));
+      return static_cast<T>(be64toh(val));
     } else if constexpr (sizeof(T) == 4) {
-      return static_cast<T>(be32toh(static_cast<int32_t>(val)));
+      return static_cast<T>(be32toh(val));
     } else if constexpr (sizeof(T) == 2) {
-      return static_cast<T>(be16toh(static_cast<int16_t>(val)));
+      return static_cast<T>(be16toh(val));
     } else if constexpr (sizeof(T) == 1) {
-      return val;
+      return static_cast<T>(val);
     } else {
       static_assert(sizeof(T) == 0, "Unsupported size");
     }
@@ -93,15 +89,15 @@ class Buffer : Copyable {
   inline const char* FindCRLF() const {
     auto crlf = reinterpret_cast<const char*>(
         ::memmem(Peek(), ReadableBytes(), kCRLF, 2));
-    return crlf == begin_write() ? nullptr : crlf;
+    return crlf;
   }
 
   inline const char* FindCRLF(const char* start) const {
     assert(Peek() <= start);
     assert(start <= begin_write());
     auto crlf = reinterpret_cast<const char*>(
-        ::memmem(start, ReadableBytes(), kCRLF, 2));
-    return crlf == begin_write() ? nullptr : crlf;
+        ::memmem(start, begin_write() - start, kCRLF, 2));
+    return crlf;
   }
 
   inline const char* FindEOL() const {
@@ -235,30 +231,24 @@ class Buffer : Copyable {
 
   // read data from FD to buffer.
   ssize_t ReadFd(int fd) {
-    std::unique_ptr<std::array<char, kExtraBufSize>> extra_buf;
-    size_t writable = WritableBytes();
-
-    int iovcnt = 1;
-    if (writable < kExtraBufSize) {
-      extra_buf = std::make_unique<std::array<char, kExtraBufSize>>();
-      iovcnt = 2;
-    }
-
     std::array<iovec, 2> buffers;
+
+    const size_t writable = WritableBytes();
     buffers[0].iov_base = begin_write();
     buffers[0].iov_len = writable;
-    if (iovcnt > 1) {
-      buffers[1].iov_base = extra_buf->data();
-      buffers[1].iov_len = extra_buf->size();
-    }
 
+    std::array<char, kExtraBufSize> extra_buf;
+    buffers[1].iov_base = extra_buf.data();
+    buffers[1].iov_len = extra_buf.size();
+
+    const int iovcnt = (writable < kExtraBufSize) ? 2 : 1;
     const ssize_t n = ::readv(fd, buffers.data(), iovcnt);
 
     if (n >= 0 && n <= static_cast<ssize_t>(writable)) {
       writer_index_ += n;
-    } else {
+    } else if (n > static_cast<ssize_t>(writable)) {
       writer_index_ = buffer_.size();
-      Append(extra_buf->data(), n - writable);
+      Append(extra_buf.data(), n - writable);
     }
 
     return n;
