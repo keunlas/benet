@@ -2,7 +2,3 @@
 // https://github.com/keunlas/benet
 //
 // Author: Keunlas <keunlaz at gmail dot com>
-
-#include "benet/buffer.h"
-
-namespace benet {}  // namespace benet

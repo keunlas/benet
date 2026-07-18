@@ -1,28 +1,34 @@
 // Distributed under the MIT License that can be found in the LICENSE file.
-// https://github.com/keunlas/be
+// https://github.com/keunlas/benet
 //
 // Author: Keunlas <keunlaz at gmail dot com>
 
-#ifndef BENET_CHANNEL_H_
-#define BENET_CHANNEL_H_
+#ifndef KEUNLAS_BENET_CHANNEL_H_
+#define KEUNLAS_BENET_CHANNEL_H_
 
 #include <functional>
 #include <memory>
 #include <string>
 
-#include "benet/copy_move_type.h"
-#include "benet/timestamp.h"
+#include "benet/copy_move_policy.h"
+#include "benet/types.h"
+
+namespace benet {
+class EventLoop;
+}  // namespace benet
 
 namespace benet {
 
-class EventLoop;
-
+/**
+ * @brief 通道，用于封装 fd 并处理其事件
+ *
+ */
 class Channel : NotCopyableOrMovable {
  public:
   Channel(EventLoop* loop, int fd);
   ~Channel();
 
-  void HandleEvent(std::chrono::system_clock::time_point recv_time);
+  void HandleEvent(TimePoint recv_time);
 
   inline const EventLoop* loop() const { return loop_; }
 
@@ -79,4 +85,4 @@ class Channel : NotCopyableOrMovable {
 
 }  // namespace benet
 
-#endif  // !BENET_CHANNEL_H_
+#endif  // !KEUNLAS_BENET_CHANNEL_H_

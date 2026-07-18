@@ -1,5 +1,5 @@
 // Distributed under the MIT License that can be found in the LICENSE file.
-// https://github.com/keunlas/be
+// https://github.com/keunlas/benet
 //
 // Author: Keunlas <keunlaz at gmail dot com>
 
@@ -11,22 +11,25 @@
 
 thread_local benet::EventLoop* tThreadEventLoop{nullptr};
 
-namespace {
 static constexpr int kPollTimeoutMs = 8192;
-}  // namespace
 
-namespace benet {
-namespace details {
+namespace benet::details {
 int create_eventfd() {
   // non-block fd
   int eventfd = ::eventfd(0, EFD_NONBLOCK | EFD_CLOEXEC);
   if (eventfd < 0) {
     BELOG_CRITICAL("Failed to create eventfd: {}", ERRNO_MSG);
   }
+  BELOG_TRACE("Created eventfd {}", eventfd);
   return eventfd;
 }
-void close_eventfd(int fd) { ::close(fd); }
-}  // namespace details
+void close_eventfd(int fd) {
+  ::close(fd);
+  // BELOG_TRACE("Closed eventfd {}", fd);
+}
+}  // namespace benet::details
+
+namespace benet {
 
 EventLoop* EventLoop::CurrentThreadEventLoop() { return tThreadEventLoop; }
 
@@ -44,7 +47,7 @@ EventLoop::EventLoop()
     : wakeup_fd_(details::create_eventfd()),
       wakeup_channel_(std::make_unique<Channel>(this, wakeup_fd_)),
       timer_queue_(std::make_unique<TimerQueue>(this)) {
-  BELOG_DEBUG("EventLoop {} created", reinterpret_cast<const void*>(this));
+  BELOG_TRACE("EventLoop {} created", reinterpret_cast<const void*>(this));
   if (tThreadEventLoop) {
     BELOG_CRITICAL("A EventLoop {} already existed in this thread",
                    reinterpret_cast<const void*>(tThreadEventLoop));
@@ -52,7 +55,7 @@ EventLoop::EventLoop()
     tThreadEventLoop = this;
   }
 
-  wakeup_channel_->BindReadCallback(std::bind(&EventLoop::handle_wakeup, this));
+  wakeup_channel_->BindReadCallback(std::bind(&EventLoop::reset_wakeup, this));
   wakeup_channel_->EnableReadEvent();
 }
 
@@ -103,9 +106,9 @@ void EventLoop::Start() {
 void EventLoop::Stop() {
   quitting_.store(true);
   if (!IsInLoopThread()) {
-    WakeUp();
+    set_wakeup();
   }
-  BELOG_DEBUG("EventLoop {} quited", reinterpret_cast<const void*>(this));
+  BELOG_TRACE("EventLoop {} quited", reinterpret_cast<const void*>(this));
 }
 
 void EventLoop::RunInLoop(std::function<void()> cb) {
@@ -123,11 +126,11 @@ void EventLoop::QueueInLoop(std::function<void()> cb) {
   }
 
   if (!IsInLoopThread() || calling_pendings_) {
-    WakeUp();
+    set_wakeup();
   }
 }
 
-void EventLoop::WakeUp() {
+void EventLoop::set_wakeup() {
   uint64_t one = 1;
   auto n = ::write(wakeup_fd_, &one, sizeof(one));
   if (n != sizeof(one)) {
@@ -135,7 +138,7 @@ void EventLoop::WakeUp() {
   }
 }
 
-void EventLoop::handle_wakeup() {
+void EventLoop::reset_wakeup() {
   uint64_t one = 1;
   auto n = ::read(wakeup_fd_, &one, sizeof(one));
   if (n != sizeof(one)) {
@@ -164,19 +167,19 @@ bool EventLoop::HasChannel(Channel* channel) {
   return poller_->HasChannel(channel);
 }
 
-TimerWeakPtr EventLoop::RunAt(TimePoint time, std::function<void()> cb) {
+TimerWeakPtr EventLoop::RunAt(TimePoint time, Functor cb) {
   return timer_queue_->AddTimer(std::move(cb), time, 0.0);
 }
 
-TimerWeakPtr EventLoop::RunAfter(double delay, std::function<void()> cb) {
+TimerWeakPtr EventLoop::RunAfter(double delay, Functor cb) {
   auto now = TimeClock::now();
-  now += std::chrono::nanoseconds(static_cast<int64_t>(delay * 1e9));
+  now += std::chrono::nanoseconds(static_cast<TimePoint::rep>(delay * 1e9));
   return timer_queue_->AddTimer(std::move(cb), now, 0.0);
 }
 
-TimerWeakPtr EventLoop::RunEvery(double interval, std::function<void()> cb) {
+TimerWeakPtr EventLoop::RunEvery(double interval, Functor cb) {
   auto now = TimeClock::now();
-  now += std::chrono::nanoseconds(static_cast<int64_t>(interval * 1e9));
+  now += std::chrono::nanoseconds(static_cast<TimePoint::rep>(interval * 1e9));
   return timer_queue_->AddTimer(std::move(cb), now, interval);
 }
 

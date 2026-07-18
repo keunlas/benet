@@ -1,10 +1,10 @@
 // Distributed under the MIT License that can be found in the LICENSE file.
-// https://github.com/keunlas/be
+// https://github.com/keunlas/benet
 //
 // Author: Keunlas <keunlaz at gmail dot com>
 
-#ifndef BENET_EVENTLOOP_H_
-#define BENET_EVENTLOOP_H_
+#ifndef KEUNLAS_BENET_EVENTLOOP_H_
+#define KEUNLAS_BENET_EVENTLOOP_H_
 
 #include <atomic>
 #include <cassert>
@@ -16,10 +16,10 @@
 #include <vector>
 
 #include "benet/channel.h"
-#include "benet/copy_move_type.h"
+#include "benet/copy_move_policy.h"
 #include "benet/poller.h"
 #include "benet/timer_queue.h"
-#include "benet/timestamp.h"
+#include "benet/types.h"
 
 namespace benet {
 
@@ -39,8 +39,6 @@ class EventLoop : NotCopyableOrMovable {
   TimerWeakPtr RunEvery(double interval, std::function<void()> cb);
   void CancelTimer(TimerWeakPtr timer_wk);
 
-  void WakeUp();
-
   void UpdateChannel(Channel* channel);
   void RemoveChannel(Channel* channel);
   bool HasChannel(Channel* channel);
@@ -51,7 +49,8 @@ class EventLoop : NotCopyableOrMovable {
   bool IsInLoopThread() const;
 
  private:
-  void handle_wakeup();
+  void set_wakeup();
+  void reset_wakeup();
 
  private:
   std::atomic_bool running_{false};
@@ -76,4 +75,4 @@ class EventLoop : NotCopyableOrMovable {
 
 }  // namespace benet
 
-#endif  // !BENET_EVENTLOOP_H_
+#endif  // !KEUNLAS_BENET_EVENTLOOP_H_

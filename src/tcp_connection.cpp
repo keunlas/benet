@@ -1,5 +1,5 @@
 // Distributed under the MIT License that can be found in the LICENSE file.
-// https://github.com/keunlas/be
+// https://github.com/keunlas/benet
 //
 // Author: Keunlas <keunlaz at gmail dot com>
 
@@ -19,63 +19,58 @@ TcpConnection::TcpConnection(EventLoop* loop, int sockfd,
       socket_(std::make_unique<Socket>(sockfd)),
       channel_(std::make_unique<Channel>(loop_, sockfd)),
       local_addr_(local_addr),
-      peer_addr_(peer_addr),
-      high_water_mark_(128 * 1024 * 1024) {
-  using namespace std::placeholders;
+      peer_addr_(peer_addr) {
+  using std::placeholders::_1;
   channel_->BindReadCallback(std::bind(&TcpConnection::handle_read, this, _1));
   channel_->BindWriteCallback(std::bind(&TcpConnection::handle_write, this));
   channel_->BindCloseCallback(std::bind(&TcpConnection::handle_close, this));
   channel_->BindErrorCallback(std::bind(&TcpConnection::handle_error, this));
-  BELOG_DEBUG("TcpConnection constructed at sockfd {}", sockfd);
+  BELOG_TRACE("TcpConnection constructed at sockfd {}", sockfd);
   socket_->SetKeepAlive(true);
 }
 
 TcpConnection::~TcpConnection() {
-  BELOG_DEBUG("TcpConnection destructed at sockfd {}, state = {}",
+  BELOG_TRACE("TcpConnection destructed at sockfd {}, state = {}",
               channel_->fd(), state_as_string());
   assert(state_ == State::Disconnected);
 }
 
-void TcpConnection::Send(const void* msg, size_t len) {
-  Send(std::string_view(static_cast<const char*>(msg), len));
+void TcpConnection::Send(std::string_view msg) {
+  Send(reinterpret_cast<const void*>(msg.data()), msg.size());
 }
 
-void TcpConnection::Send(const std::string_view& msg) {
-  if (state_.load() != State::Connected) {
-    return;
-  }
-
+void TcpConnection::Send(const void* msg, size_t len) {
+  if (state_.load() != State::Connected) return;
   if (loop_->IsInLoopThread()) {
-    send_in_loop(msg);
+    send_in_loop(msg, len);
   } else {
     auto conn = shared_from_this();
-    std::string msg_str{msg};
-    loop_->RunInLoop([conn, this, msg_str]() { send_in_loop(msg_str); });
+    std::string message(static_cast<const char*>(msg), len);
+    loop_->RunInLoop([conn, message = std::move(message)]() {
+      conn->send_in_loop(message.data(), message.size());
+    });
   }
 }
 
 void TcpConnection::Send(Buffer* buf) {
-  if (state_ == State::Connected) {
-    if (loop_->IsInLoopThread()) {
-      send_in_loop(buf->Peek(), buf->ReadableBytes());
-      buf->RetrieveAll();
-    } else {
-      auto conn = shared_from_this();
-      auto msg = buf->RetrieveAllAsString();
-      loop_->RunInLoop([conn, this, msg]() { send_in_loop(msg); });
-    }
+  if (state_.load() != State::Connected) return;
+  if (loop_->IsInLoopThread()) {
+    send_in_loop(buf->Peek(), buf->ReadableBytes());
+    buf->RetrieveAll();
+  } else {
+    auto conn = shared_from_this();
+    auto message = buf->RetrieveAllAsString();
+    loop_->RunInLoop([conn, message = std::move(message)]() {
+      conn->send_in_loop(message.data(), message.size());
+    });
   }
-}
-
-void TcpConnection::send_in_loop(const std::string_view& msg) {
-  send_in_loop(msg.data(), msg.size());
 }
 
 void TcpConnection::send_in_loop(const void* msg, size_t len) {
   loop_->AssertInLoopThread();
 
-  if (state_.load() == State::Disconnected) {
-    BELOG_WARN("disconnected, writing are rejected");
+  if (state_.load() != State::Connected) {
+    BELOG_WARN("{}, writing are rejected", state_as_string());
     return;
   }
 
@@ -95,8 +90,11 @@ void TcpConnection::send_in_loop(const void* msg, size_t len) {
       }
     } else {
       n_wrote = 0;
-      if (errno != EAGAIN) {
+      if (errno != EAGAIN || errno != EWOULDBLOCK) {
         BELOG_ERROR("Failed send directly in loop: {}", ERRNO_MSG);
+        if (errno == EINTR) {
+          // [TODO] retry to send
+        }
         if (errno == EPIPE || errno == ECONNRESET) {
           fault_error = true;
         }
@@ -104,11 +102,17 @@ void TcpConnection::send_in_loop(const void* msg, size_t len) {
     }
   }
 
-  // Add remaining to output buffers
-
-  if (fault_error || n_remaining <= 0) {
+  if (fault_error) {
+    handle_error_with_code(errno);
+    handle_close();
     return;
   }
+
+  if (n_remaining <= 0) {
+    return;
+  }
+
+  // Add remaining to output buffers
 
   size_t old_buf_len = output_buffer_.ReadableBytes();
   if (old_buf_len + n_remaining >= high_water_mark_ &&
@@ -126,8 +130,10 @@ void TcpConnection::send_in_loop(const void* msg, size_t len) {
 void TcpConnection::Shutdown() {
   State expected = State::Connected;
   if (state_.compare_exchange_strong(expected, State::Disconnecting)) {
-    loop_->RunInLoop([this]() {
+    auto conn = shared_from_this();
+    loop_->RunInLoop([this, conn]() {
       loop_->AssertInLoopThread();
+      // 如果还有写事件，则留给 handle_wirte 处理
       if (!channel_->IsWriteEvent()) {
         socket_->ShutdownWrite();
       }
@@ -140,7 +146,7 @@ void TcpConnection::ForceClose() {
   if (state_.compare_exchange_strong(expected, State::Disconnecting) ||
       state_.load() == State::Disconnecting) {
     auto conn = shared_from_this();
-    loop_->QueueInLoop([conn, this]() {
+    loop_->QueueInLoop([this, conn]() {
       loop_->AssertInLoopThread();
       if (state_ == State::Connected || state_ == State::Disconnecting) {
         handle_close();
@@ -153,9 +159,7 @@ void TcpConnection::ForceCloseDelay(double sec) {
   std::weak_ptr<TcpConnection> conn_weak(shared_from_this());
   loop_->RunAfter(sec, [conn_weak]() {
     TcpConnectionPtr conn(conn_weak.lock());
-    if (conn) {
-      conn->ForceClose();
-    }
+    if (conn) conn->ForceClose();
   });
 }
 
@@ -209,9 +213,16 @@ void TcpConnection::handle_read(TimePoint receive_time) {
   } else if (n == 0) {
     handle_close();
   } else {
+    if (errno == EAGAIN || errno == EWOULDBLOCK) {
+      return;  // because connfd is nonblocking
+    }
+    if (errno == EINTR) {
+      return;  // [TODO] retry it
+    }
     BELOG_ERROR("Failed to read Channel fd {}, errno {}: {}", channel_->fd(),
                 errno, ERRNO_MSG);
-    handle_error();
+    handle_error_with_code(errno);
+    handle_close();
   }
 }
 
@@ -219,7 +230,7 @@ void TcpConnection::handle_write() {
   loop_->AssertInLoopThread();
 
   if (!channel_->IsWriteEvent()) {
-    BELOG_TRACE("Channel fd {} already down, no more writing");
+    BELOG_DEBUG("Channel fd {} already down, no more writing");
     return;
   }
 
@@ -227,8 +238,16 @@ void TcpConnection::handle_write() {
                       output_buffer_.ReadableBytes());
 
   if (n <= 0) {
-    BELOG_ERROR("Channel fd {} write failed, errno {}: {}", channel_->fd(),
+    if (errno == EAGAIN || errno == EWOULDBLOCK) {
+      return;  // because connfd is nonblocking
+    }
+    if (errno == EINTR) {
+      return;  // [TODO] retry it
+    }
+    BELOG_ERROR("Failed to write Channel fd {}, errno {}: {}", channel_->fd(),
                 errno, ERRNO_MSG);
+    handle_error_with_code(errno);
+    handle_close();
     return;
   }
 
@@ -254,13 +273,12 @@ void TcpConnection::handle_write() {
 void TcpConnection::handle_close() {
   loop_->AssertInLoopThread();
 
-  SPDLOG_TRACE("Channel fd {}, state = {}", channel_->fd(), state_as_string());
-
   auto curr_state = state_.load();
   if (curr_state != State::Connected && curr_state != State::Disconnecting) {
-    SPDLOG_CRITICAL(
+    BELOG_ERROR(
         "Channel fd {} close, but TcpConnection not connected or already close",
         channel_->fd());
+    return;
   }
 
   set_state(State::Disconnected);
@@ -277,13 +295,19 @@ void TcpConnection::handle_error() {
               channel_->fd(), errcode, ERRCODE_MSG(errcode));
 }
 
+void TcpConnection::handle_error_with_code(int errcode) {
+  int so_error = sockets::get_socket_error(channel_->fd());
+  BELOG_ERROR("TcpConnection at sockfd {} error, errno {}: {}, SO_ERROR {}: {}",
+              channel_->fd(), errcode, ERRCODE_MSG(errcode), so_error,
+              ERRCODE_MSG(so_error));
+}
+
 const std::string& TcpConnection::state_as_string() const {
   static const std::string disconnected("Disconnected");
   static const std::string connecting("Connecting");
   static const std::string connected("Connected");
   static const std::string disconnecting("Disconnecting");
   static const std::string unknow("unknown state");
-
   switch (state_) {
     case State::Disconnected:
       return disconnected;

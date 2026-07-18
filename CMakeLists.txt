@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.21)
-project(benet VERSION 1.2.1)
+project(benet VERSION 2.0.0)
 
 include(cmake/build_option.cmake)
 include(cmake/compile_setting.cmake)

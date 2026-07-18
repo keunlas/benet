@@ -1,5 +1,5 @@
 // Distributed under the MIT License that can be found in the LICENSE file.
-// https://github.com/keunlas/be
+// https://github.com/keunlas/benet
 //
 // Author: Keunlas <keunlaz at gmail dot com>
 
@@ -16,8 +16,7 @@ static constexpr int kAddedChannel = 1;
 static constexpr int kDeletedChannel = 2;
 }  // namespace
 
-namespace benet {
-namespace details {
+namespace benet::details {
 int create_epollfd() {
   auto epollfd = ::epoll_create1(EPOLL_CLOEXEC);
   if (epollfd < 0) {
@@ -26,7 +25,9 @@ int create_epollfd() {
   return epollfd;
 }
 void close_epollfd(int epollfd) { ::close(epollfd); }
-}  // namespace details
+}  // namespace benet::details
+
+namespace benet {
 
 EPoller::EPoller(EventLoop* loop)
     : Poller(loop),
@@ -36,7 +37,7 @@ EPoller::EPoller(EventLoop* loop)
 EPoller::~EPoller() { details::close_epollfd(epoll_fd_); }
 
 TimePoint EPoller::Poll(int timeout_ms, std::vector<Channel*>& actives) {
-  BELOG_DEBUG("Current fd counts is {}", channels_.size());
+  // BELOG_TRACE("Current fd counts is {}", channels_.size());
 
   int n_readys = ::epoll_wait(epoll_fd_, events_.data(),
                               static_cast<int>(events_.size()), timeout_ms);
@@ -44,13 +45,13 @@ TimePoint EPoller::Poll(int timeout_ms, std::vector<Channel*>& actives) {
   auto now = TimeClock::now();
 
   if (n_readys > 0) {
-    BELOG_DEBUG("EPoller polled {} events", n_readys);
+    BELOG_TRACE("EPoller polled {} events", n_readys);
     fill_actives(n_readys, actives);
     if (events_.size() == static_cast<size_t>(n_readys)) {
-      events_.resize(static_cast<size_t>(n_readys) * 1.5);
+      events_.resize(static_cast<size_t>(1.5 * n_readys));
     }
   } else if (n_readys == 0) {
-    BELOG_DEBUG("EPoller timeout, nothing happened");
+    // BELOG_TRACE("EPoller timeout, nothing happened");
   } else {
     if (errno != EINTR) {
       BELOG_CRITICAL("Failed to epoll wait: {}", ERRNO_MSG);
@@ -129,6 +130,6 @@ bool Poller ::HasChannel(Channel* channel) const {
   return it != channels_.end() && it->second == channel;
 }
 
-void Poller ::AssertInLoopThread() const { loop_->AssertInLoopThread(); }
+void Poller::AssertInLoopThread() const { loop_->AssertInLoopThread(); }
 
 }  // namespace benet

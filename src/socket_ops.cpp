@@ -1,12 +1,12 @@
 // Distributed under the MIT License that can be found in the LICENSE file.
-// https://github.com/keunlas/be
+// https://github.com/keunlas/benet
 //
 // Author: Keunlas <keunlaz at gmail dot com>
 
 #include "benet/socket_ops.h"
 
+#include <arpa/inet.h>
 #include <sys/fcntl.h>
-#include <sys/socket.h>
 #include <sys/uio.h>  // readv
 #include <unistd.h>
 
@@ -15,12 +15,12 @@
 
 #include "benet/logger.h"
 
-namespace benet {
-namespace sockets {
+namespace benet::sockets {
 
-int create_nonblocking_or_die(sa_family_t family) {
-  int sockfd =
-      ::socket(family, SOCK_STREAM | SOCK_NONBLOCK | SOCK_CLOEXEC, IPPROTO_TCP);
+int create_nonblocking_or_die(unsigned short /* sa_family_t */ family) {
+  int socktype = SOCK_STREAM | SOCK_NONBLOCK | SOCK_CLOEXEC;
+  int sockprotocol = IPPROTO_TCP;
+  int sockfd = ::socket(family, socktype, sockprotocol);
   if (sockfd < 0) {
     BELOG_CRITICAL("Failed to create sockfd: {}", ERRNO_MSG);
   }
@@ -49,8 +49,10 @@ int connect(int sockfd, const sockaddr* addr) {
 
 int accept(int sockfd, sockaddr_storage* addr) {
   socklen_t addrlen = static_cast<socklen_t>(sizeof(addr));
-  int connfd = ::accept4(sockfd, reinterpret_cast<sockaddr*>(addr), &addrlen,
-                         SOCK_NONBLOCK | SOCK_CLOEXEC);
+  auto addrptr = reinterpret_cast<sockaddr*>(addr);
+
+  static int accept_flags = SOCK_NONBLOCK | SOCK_CLOEXEC;
+  int connfd = ::accept4(sockfd, addrptr, &addrlen, accept_flags);
 
   if (connfd < 0) {
     BELOG_ERROR("Failed to accept sockfd {}, errno {}: {}", sockfd, errno,
@@ -167,5 +169,4 @@ bool is_self_connect(int sockfd) {
   }
 }
 
-}  // namespace sockets
-}  // namespace benet
+}  // namespace benet::sockets

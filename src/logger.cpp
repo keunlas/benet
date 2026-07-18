@@ -1,35 +1,35 @@
 // Distributed under the MIT License that can be found in the LICENSE file.
-// https://github.com/keunlas/be
+// https://github.com/keunlas/benet
 //
 // Author: Keunlas <keunlaz at gmail dot com>
 
 #include "benet/logger.h"
 
-#include "spdlog/async.h"
-#include "spdlog/async_logger.h"
-#include "spdlog/sinks/stdout_color_sinks.h"
+#include <spdlog/async.h>
+#include <spdlog/async_logger.h>
+#include <spdlog/sinks/stdout_color_sinks.h>
 
-namespace benet {
+#include <mutex>
+#include <string>
 
-void InitAsyncLogger(spdlog::level::level_enum level) {
-  spdlog::init_thread_pool(65536, 1);
+/// @brief 日志记录器名称
+#define BENET_LOGGER_NAME "benet"
 
-  auto console_sink = std::make_shared<spdlog::sinks::stdout_color_sink_mt>();
-  spdlog::sinks_init_list sink_list{console_sink};
-  console_sink->set_level(level);
+/// @brief 日志记录样式
+#ifndef NDEBUG  // Debug: [time] [name] [level] [filename:line func]: msg
+#define BENET_LOGGER_PATTERN "[%Y-%m-%d %T.%f] [%n] [%^%l%$] [%s:%# %!]: %v"
+#else  // Release: [time] [name] [level]: msg
+#define BENET_LOGGER_PATTERN "[%Y-%m-%d %T.%f] [%n] [%^%l%$]: %v"
+#endif
 
-  auto logger = std::make_shared<spdlog::async_logger>(
-      "benet", sink_list, spdlog::thread_pool(),
-      spdlog::async_overflow_policy::block);
-
-  logger->set_pattern("[%Y-%m-%d %T.%f] [%P:%t] [%^%l%$]: %v [%s:%#][%!]");
-  logger->set_level(level);
-  spdlog::set_default_logger(logger);
+/// @brief 异步控制台日志记录器
+std::shared_ptr<spdlog::logger> benet::Logger::AsyncConsoleLogger() {
+  static std::shared_ptr<spdlog::logger> logger = [](const char* name) {
+    auto l = spdlog::create_async<spdlog::sinks::stdout_color_sink_mt>(name);
+    l->set_pattern(BENET_LOGGER_PATTERN);
+    l->set_level(spdlog::level::trace);
+    l->flush_on(spdlog::level::err);
+    return l;
+  }(BENET_LOGGER_NAME);
+  return logger;
 }
-
-void ShutdownLogger() {
-  spdlog::default_logger()->flush();
-  spdlog::shutdown();
-}
-
-}  // namespace benet

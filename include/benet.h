@@ -6,12 +6,6 @@
 #ifndef KEUNLAS_BENET_H_
 #define KEUNLAS_BENET_H_
 
-namespace benet {
-
-static constexpr int major_version{1};
-static constexpr int minor_version{2};
-static constexpr int patch_version{1};
-
-}  // namespace benet
+namespace benet {}  // namespace benet
 
 #endif  // !KEUNLAS_BENET_H_

@@ -1,10 +1,10 @@
 // Distributed under the MIT License that can be found in the LICENSE file.
-// https://github.com/keunlas/be
+// https://github.com/keunlas/benet
 //
 // Author: Keunlas <keunlaz at gmail dot com>
 
-#ifndef BENET_TCPCONNECTION_H_
-#define BENET_TCPCONNECTION_H_
+#ifndef KEUNLAS_BENET_TCP_CONNECTION_H_
+#define KEUNLAS_BENET_TCP_CONNECTION_H_
 
 #include <any>
 
@@ -12,9 +12,20 @@
 #include "benet/callbacks.h"
 #include "benet/eventloop.h"
 #include "benet/socket.h"
+#include "benet/types.h"
+
+namespace benet {
+extern void default_connection_callback(const TcpConnectionPtr&);
+extern void default_message_callback(const TcpConnectionPtr&, Buffer*,
+                                     TimePoint);
+}  // namespace benet
 
 namespace benet {
 
+/**
+ * @brief TCP 连接
+ *
+ */
 class TcpConnection : NotCopyableOrMovable,
                       public std::enable_shared_from_this<TcpConnection> {
  public:
@@ -35,8 +46,8 @@ class TcpConnection : NotCopyableOrMovable,
   bool IsConnected() const { return state_.load() == State::Connected; }
   bool IsDisconnected() const { return state_.load() == State::Disconnected; }
 
+  void Send(std::string_view msg);
   void Send(const void* msg, size_t len);
-  void Send(const std::string_view& msg);
   void Send(Buffer* buf);
 
   void Shutdown();
@@ -71,16 +82,15 @@ class TcpConnection : NotCopyableOrMovable,
  private:
   enum class State { Disconnected, Connecting, Connected, Disconnecting };
 
-  void send_in_loop(const std::string_view& msg);
   void send_in_loop(const void* msg, size_t len);
 
   void handle_read(TimePoint receive_time);
   void handle_write();
   void handle_close();
   void handle_error();
+  void handle_error_with_code(int errcode);
 
   void set_state(State s) { state_.store(s); }
-
   const std::string& state_as_string() const;
 
  private:
@@ -94,7 +104,7 @@ class TcpConnection : NotCopyableOrMovable,
   std::atomic<State> state_{State::Connecting};
   std::atomic_bool reading_{true};
 
-  size_t high_water_mark_;
+  size_t high_water_mark_{128 * 1024 * 1024};
   HighWaterMarkCallback on_high_water_mark_;
   ConnectionCallback on_connection_;
   CloseCallback on_close_;
@@ -109,4 +119,4 @@ class TcpConnection : NotCopyableOrMovable,
 
 }  // namespace benet
 
-#endif  // !BENET_TCPCONNECTION_H_
+#endif  // !KEUNLAS_BENET_TCP_CONNECTION_H_

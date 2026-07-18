@@ -1,10 +1,10 @@
 // Distributed under the MIT License that can be found in the LICENSE file.
-// https://github.com/keunlas/be
+// https://github.com/keunlas/benet
 //
 // Author: Keunlas <keunlaz at gmail dot com>
 
-#ifndef BENET_BUFFER_H
-#define BENET_BUFFER_H
+#ifndef KEUNLAS_BENET_BUFFER_H
+#define KEUNLAS_BENET_BUFFER_H
 
 #include <endian.h>
 #include <sys/uio.h>
@@ -20,19 +20,7 @@
 #include <string_view>
 #include <vector>
 
-#include "benet/copy_move_type.h"
-
-#ifndef BENET_BUFFER_INIT_SIZE
-#define BENET_BUFFER_INIT_SIZE (1024)  // default is 1 KiB
-#endif
-
-#ifndef BENET_BUFFER_EXTRA_SIZE
-#define BENET_BUFFER_EXTRA_SIZE (1024 * 1024 * 1)  // default is 1 MiB
-#endif
-
-#ifndef BENET_BUFFER_CHEAP_PREPEND_SIZE
-#define BENET_BUFFER_CHEAP_PREPEND_SIZE (8)  // default is 8 Bytes
-#endif
+#include "benet/copy_move_policy.h"
 
 namespace benet {
 
@@ -49,9 +37,9 @@ namespace benet {
 
 class Buffer : Copyable {
  public:
-  static constexpr size_t kCheapPrepend = BENET_BUFFER_CHEAP_PREPEND_SIZE;
-  static constexpr size_t kInitialSize = BENET_BUFFER_INIT_SIZE;
-  static constexpr size_t kExtraBufSize = BENET_BUFFER_EXTRA_SIZE;
+  static constexpr size_t kCheapPrepend = 8;      // 8Bytes
+  static constexpr size_t kInitialSize = 1024;    // 1KiB
+  static constexpr size_t kExtraBufSize = 65536;  // 64KiB
   static constexpr auto kCRLF = "\r\n";
 
  public:
@@ -66,45 +54,42 @@ class Buffer : Copyable {
 
   inline const char* Peek() const { return begin_read(); }
 
-  inline int64_t PeekInt64() const {
-    assert(ReadableBytes() >= sizeof(int64_t));
-    int64_t be64 = 0;
-    std::memcpy(&be64, Peek(), sizeof(be64));
-    return be64toh(be64);
+  template <typename T>
+  inline T PeekInt() const {
+    static_assert(std::is_integral_v<T>, "T must be integral type");
+    assert(ReadableBytes() >= sizeof(T));
+    std::make_unsigned_t<T> val = 0;
+    std::memcpy(&val, Peek(), sizeof(T));
+    if constexpr (sizeof(T) == 8) {
+      return static_cast<T>(be64toh(val));
+    } else if constexpr (sizeof(T) == 4) {
+      return static_cast<T>(be32toh(val));
+    } else if constexpr (sizeof(T) == 2) {
+      return static_cast<T>(be16toh(val));
+    } else if constexpr (sizeof(T) == 1) {
+      return static_cast<T>(val);
+    } else {
+      static_assert(sizeof(T) == 0, "Unsupported size");
+    }
   }
 
-  inline int32_t PeekInt32() const {
-    assert(ReadableBytes() >= sizeof(int32_t));
-    int32_t be32 = 0;
-    std::memcpy(&be32, Peek(), sizeof(be32));
-    return be32toh(be32);
-  }
-
-  inline int16_t PeekInt16() const {
-    assert(ReadableBytes() >= sizeof(int16_t));
-    int16_t be16 = 0;
-    std::memcpy(&be16, Peek(), sizeof(be16));
-    return be16toh(be16);
-  }
-
-  inline int8_t PeekInt8() const {
-    assert(ReadableBytes() >= sizeof(int8_t));
-    int8_t x = *Peek();
-    return x;
-  }
+  inline auto PeekInt64() const { return PeekInt<int64_t>(); }
+  inline auto PeekInt32() const { return PeekInt<int32_t>(); }
+  inline auto PeekInt16() const { return PeekInt<int16_t>(); }
+  inline auto PeekInt8() const { return PeekInt<int8_t>(); }
 
   inline const char* FindCRLF() const {
     auto crlf = reinterpret_cast<const char*>(
         ::memmem(Peek(), ReadableBytes(), kCRLF, 2));
-    return crlf == begin_write() ? nullptr : crlf;
+    return crlf;
   }
 
   inline const char* FindCRLF(const char* start) const {
     assert(Peek() <= start);
     assert(start <= begin_write());
     auto crlf = reinterpret_cast<const char*>(
-        ::memmem(start, ReadableBytes(), kCRLF, 2));
-    return crlf == begin_write() ? nullptr : crlf;
+        ::memmem(start, begin_write() - start, kCRLF, 2));
+    return crlf;
   }
 
   inline const char* FindEOL() const {
@@ -120,14 +105,9 @@ class Buffer : Copyable {
   }
 
   inline void Retrieve(size_t len) {
-    assert(len >= ReadableBytes());
+    assert(ReadableBytes() >= len);
     reader_index_ += len;
   }
-
-  inline void RetrieveInt64() { Retrieve(sizeof(int64_t)); }
-  inline void RetrieveInt32() { Retrieve(sizeof(int32_t)); }
-  inline void RetrieveInt16() { Retrieve(sizeof(int16_t)); }
-  inline void RetrieveInt8() { Retrieve(sizeof(int8_t)); }
 
   inline void RetrieveUntil(const char* end) {
     assert(Peek() <= end);
@@ -141,7 +121,7 @@ class Buffer : Copyable {
   }
 
   inline std::string RetrieveAsString(size_t len) {
-    assert(len >= ReadableBytes());
+    assert(ReadableBytes() >= len);
     std::string result(Peek(), len);
     Retrieve(len);
     return result;
@@ -151,39 +131,26 @@ class Buffer : Copyable {
     return RetrieveAsString(ReadableBytes());
   }
 
-  inline int64_t RetrieveAsInt64() {
-    int64_t result = PeekInt64();
-    RetrieveInt64();
+  template <typename T>
+  inline T RetrieveAsInt() {
+    static_assert(std::is_integral_v<T>, "T must be integral type");
+    T result = PeekInt<T>();
+    Retrieve(sizeof(T));
     return result;
   }
 
-  inline int32_t RetrieveAsInt32() {
-    int32_t result = PeekInt32();
-    RetrieveInt32();
-    return result;
-  }
-
-  inline int16_t RetrieveAsInt16() {
-    int16_t result = PeekInt16();
-    RetrieveInt16();
-    return result;
-  }
-
-  inline int8_t RetrieveAsInt8() {
-    int8_t result = PeekInt8();
-    RetrieveInt8();
-    return result;
-  }
+  inline auto RetrieveAsInt64() { return RetrieveAsInt<int64_t>(); }
+  inline auto RetrieveAsInt32() { return RetrieveAsInt<int32_t>(); }
+  inline auto RetrieveAsInt16() { return RetrieveAsInt<int16_t>(); }
+  inline auto RetrieveAsInt8() { return RetrieveAsInt<int8_t>(); }
 
   // increase buffer size if writable bytes less than LEN.
   inline void EnsureWriteableBytes(size_t len) {
-    if (len > WritableBytes()) {
-      make_space(len);
-    }
+    if (len > WritableBytes()) make_space(len);
   }
 
-  inline void Append(const std::string_view& sv) {
-    Append(sv.data(), sv.size());
+  inline void Append(std::string_view view) {
+    Append(view.data(), view.size());
   }
 
   inline void Append(const void* data, size_t len) {
@@ -196,61 +163,84 @@ class Buffer : Copyable {
     writer_index_ += len;
   }
 
-  inline void AppendInt64(int64_t x) {
-    int64_t be64 = htobe64(x);
-    Append(&be64, sizeof(be64));
+  template <typename T>
+  inline void AppendInt(T num) {
+    static_assert(std::is_integral_v<T>, "T must be integral type");
+    if constexpr (sizeof(T) == 8) {
+      num = htobe64(num);
+    } else if constexpr (sizeof(T) == 4) {
+      num = htobe32(num);
+    } else if constexpr (sizeof(T) == 2) {
+      num = htobe16(num);
+    } else if constexpr (sizeof(T) == 1) {
+      (void)num;
+    } else {
+      static_assert(sizeof(T) == 0, "Unsupported size");
+    }
+    Append(&num, sizeof(T));
   }
 
-  inline void AppendInt32(int32_t x) {
-    int32_t be32 = htobe32(x);
-    Append(&be32, sizeof(be32));
-  }
+  inline void AppendInt64(int64_t x) { AppendInt<int64_t>(x); }
+  inline void AppendInt32(int32_t x) { AppendInt<int32_t>(x); }
+  inline void AppendInt16(int16_t x) { AppendInt<int16_t>(x); }
+  inline void AppendInt8(int8_t x) { AppendInt<int8_t>(x); }
 
-  inline void AppendInt16(int16_t x) {
-    int16_t be16 = htobe16(x);
-    Append(&be16, sizeof(be16));
+  inline void Prepend(std::string_view view) {
+    Prepend(view.data(), view.size());
   }
-
-  inline void AppendInt8(int8_t x) { Append(&x, sizeof(x)); }
 
   inline void Prepend(const void* data, size_t len) {
+    Prepend(static_cast<const char*>(data), len);
+  }
+
+  inline void Prepend(const char* data, size_t len) {
     assert(len <= PrependableBytes());
-    const char* p = static_cast<const char*>(data);
-    auto t = begin_read() - len;
-    std::copy(p, p + len, t);
+    std::copy_backward(data, data + len, begin_read());
     reader_index_ -= len;
   }
 
-  inline void Prepend(const std::string_view& sv) {
-    Prepend(sv.data(), sv.size());
+  template <typename T>
+  inline void PrependInt(T num) {
+    static_assert(std::is_integral_v<T>, "T must be integral type");
+    if constexpr (sizeof(T) == 8) {
+      num = htobe64(num);
+    } else if constexpr (sizeof(T) == 4) {
+      num = htobe32(num);
+    } else if constexpr (sizeof(T) == 2) {
+      num = htobe16(num);
+    } else if constexpr (sizeof(T) == 1) {
+      (void)num;
+    } else {
+      static_assert(sizeof(T) == 0, "Unsupported size");
+    }
+    Prepend(&num, sizeof(T));
   }
+
+  inline void PrependInt64(int64_t x) { PrependInt<int64_t>(x); }
+  inline void PrependInt32(int32_t x) { PrependInt<int32_t>(x); }
+  inline void PrependInt16(int16_t x) { PrependInt<int16_t>(x); }
+  inline void PrependInt8(int8_t x) { PrependInt<int8_t>(x); }
 
   // read data from FD to buffer.
   ssize_t ReadFd(int fd) {
-    std::unique_ptr<std::array<char, kExtraBufSize>> extra_buf;
-    size_t writable = WritableBytes();
-
-    int iovcnt = 1;
-    if (writable < kExtraBufSize) {
-      extra_buf = std::make_unique<std::array<char, kExtraBufSize>>();
-      iovcnt = 2;
-    }
-
     std::array<iovec, 2> buffers;
+
+    const size_t writable = WritableBytes();
     buffers[0].iov_base = begin_write();
     buffers[0].iov_len = writable;
-    if (iovcnt > 1) {
-      buffers[1].iov_base = extra_buf->data();
-      buffers[1].iov_len = extra_buf->size();
-    }
 
+    std::array<char, kExtraBufSize> extra_buf;
+    buffers[1].iov_base = extra_buf.data();
+    buffers[1].iov_len = extra_buf.size();
+
+    const int iovcnt = (writable < kExtraBufSize) ? 2 : 1;
     const ssize_t n = ::readv(fd, buffers.data(), iovcnt);
 
     if (n >= 0 && n <= static_cast<ssize_t>(writable)) {
       writer_index_ += n;
-    } else {
+    } else if (n > static_cast<ssize_t>(writable)) {
       writer_index_ = buffer_.size();
-      Append(extra_buf->data(), n - writable);
+      Append(extra_buf.data(), n - writable);
     }
 
     return n;
@@ -271,8 +261,7 @@ class Buffer : Copyable {
     } else {
       /* make space inside */
       size_t readable = ReadableBytes();
-      std::copy(begin() + reader_index_, begin() + writer_index_,
-                begin() + kCheapPrepend);
+      std::copy(begin_read(), begin_write(), begin() + kCheapPrepend);
       reader_index_ = kCheapPrepend;
       writer_index_ = reader_index_ + readable;
     }
@@ -286,4 +275,4 @@ class Buffer : Copyable {
 
 }  // namespace benet
 
-#endif  // !BENET_BUFFER_H
+#endif  // !KEUNLAS_BENET_BUFFER_H

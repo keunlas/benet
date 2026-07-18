@@ -1,17 +1,16 @@
 // Distributed under the MIT License that can be found in the LICENSE file.
-// https://github.com/keunlas/be
+// https://github.com/keunlas/benet
 //
 // Author: Keunlas <keunlaz at gmail dot com>
 
-#ifndef BENET_SOCKET_OPS_H_
-#define BENET_SOCKET_OPS_H_
+#ifndef KEUNLAS_BENET_SOCKET_OPS_H_
+#define KEUNLAS_BENET_SOCKET_OPS_H_
 
-#include <arpa/inet.h>
+#include <sys/socket.h>
 
-namespace benet {
-namespace sockets {
+namespace benet::sockets {
 
-int create_nonblocking_or_die(sa_family_t family);
+int create_nonblocking_or_die(unsigned short /* sa_family_t */);
 
 void bind_or_die(int sockfd, const sockaddr* addr);
 void listen_or_die(int sockfd);
@@ -33,7 +32,6 @@ sockaddr_storage get_peer_addr(int sockfd);
 
 bool is_self_connect(int sockfd);
 
-}  // namespace sockets
-}  // namespace benet
+}  // namespace benet::sockets
 
-#endif  // !BENET_SOCKET_OPS_H_
+#endif  // !KEUNLAS_BENET_SOCKET_OPS_H_

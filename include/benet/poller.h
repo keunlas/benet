@@ -1,30 +1,42 @@
 // Distributed under the MIT License that can be found in the LICENSE file.
-// https://github.com/keunlas/be
+// https://github.com/keunlas/benet
 //
 // Author: Keunlas <keunlaz at gmail dot com>
 
-#ifndef BENET_POLLER_H_
-#define BENET_POLLER_H_
+#ifndef KEUNLAS_BENET_POLLER_H_
+#define KEUNLAS_BENET_POLLER_H_
 
 #include <sys/epoll.h>
 
 #include <unordered_map>
 #include <vector>
 
-#include "benet/copy_move_type.h"
-#include "benet/timestamp.h"
+#include "benet/copy_move_policy.h"
+#include "benet/types.h"
 
 namespace benet {
-
 class Channel;
 class EventLoop;
+}  // namespace benet
 
+namespace benet {
+/**
+ * @brief Poller
+ *
+ */
 class Poller : NotCopyableOrMovable {
  public:
   Poller(EventLoop* loop) : loop_(loop) {}
   virtual ~Poller() = default;
 
-  virtual TimePoint Poll(int timeout_ms, std::vector<Channel*>& actives_) = 0;
+  /**
+   * @brief 轮询主函数
+   *
+   * @param timeout_ms 轮询超时时间（毫秒）
+   * @param actives [OUT] 激活状态的 Channel
+   * @return TimePoint 轮询返回时刻
+   */
+  virtual TimePoint Poll(int timeout_ms, std::vector<Channel*>& actives) = 0;
 
   virtual void UpdateChannel(Channel* channel) = 0;
   virtual void RemoveChannel(Channel* channel) = 0;
@@ -60,4 +72,4 @@ class EPoller : public Poller {
 
 }  // namespace benet
 
-#endif  // !BENET_POLLER_H_
+#endif  // !KEUNLAS_BENET_POLLER_H_

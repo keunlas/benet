@@ -1,5 +1,5 @@
 // Distributed under the MIT License that can be found in the LICENSE file.
-// https://github.com/keunlas/be
+// https://github.com/keunlas/benet
 //
 // Author: Keunlas <keunlaz at gmail dot com>
 
@@ -8,7 +8,7 @@
 #include <sys/epoll.h>
 #include <sys/fcntl.h>
 
-#include <sstream>
+#include <string>
 
 #include "benet/eventloop.h"
 #include "benet/logger.h"
@@ -39,12 +39,11 @@ void Channel::HandleEvent(TimePoint recv_time) {
   }
 
   event_handing_ = true;
-  BELOG_TRACE("Channel fd {} have revents = {}: {}", fd_, revents_,
-              events_as_string(revents_));
+  BELOG_TRACE("events '{}' occured in fd {}", events_as_string(revents_), fd_);
   {
     // Conduct error (errno will be set)
     if (revents_ & EPOLLERR) {
-      BELOG_WARN("Channel fd {} EPOLLERR: {}", fd_, ERRNO_MSG);
+      BELOG_WARN("EPOLLERR: '{}' occured in fd {}", ERRNO_MSG, fd_);
       if (on_error_) on_error_();
     }
 
@@ -67,25 +66,29 @@ void Channel::HandleEvent(TimePoint recv_time) {
 }
 
 std::string Channel::events_as_string(int ev) {
-  std::ostringstream oss;
-  if (ev & EPOLLIN) oss << "IN ";
-  if (ev & EPOLLPRI) oss << "PRI ";
-  if (ev & EPOLLOUT) oss << "OUT ";
-  if (ev & EPOLLHUP) oss << "HUP ";
-  if (ev & EPOLLRDHUP) oss << "RDHUP ";
-  if (ev & EPOLLERR) oss << "ERR ";
-  return oss.str();
+  std::string str;
+  if (ev & EPOLLIN) str.append("IN ");
+  if (ev & EPOLLPRI) str.append("PRI ");
+  if (ev & EPOLLOUT) str.append("OUT ");
+  if (ev & EPOLLHUP) str.append("HUP ");
+  if (ev & EPOLLRDHUP) str.append("RDHUP ");
+  if (ev & EPOLLERR) str.append("ERR ");
+  if (!str.empty() && str.back() == ' ') str.pop_back();
+  return str;
 }
 
 void Channel::BindReadCallback(std::function<void(TimePoint)> cb) {
   on_read_ = std::move(cb);
 };
+
 void Channel::BindWriteCallback(std::function<void()> cb) {
   on_write_ = std::move(cb);
 };
+
 void Channel::BindCloseCallback(std::function<void()> cb) {
   on_close_ = std::move(cb);
 };
+
 void Channel::BindErrorCallback(std::function<void()> cb) {
   on_error_ = std::move(cb);
 };
@@ -116,7 +119,9 @@ void Channel::DisableAllEvent() {
 };
 
 bool Channel::IsNoneEvent() const { return events_ == kNoneEvent; };
+
 bool Channel::IsReadEvent() const { return events_ & kReadEvent; };
+
 bool Channel::IsWriteEvent() const { return events_ & kWriteEvent; };
 
 void Channel::RemoveFromLoop() {

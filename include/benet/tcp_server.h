@@ -1,10 +1,10 @@
 // Distributed under the MIT License that can be found in the LICENSE file.
-// https://github.com/keunlas/be
+// https://github.com/keunlas/benet
 //
 // Author: Keunlas <keunlaz at gmail dot com>
 
-#ifndef BENET_TCP_SERVER_H_
-#define BENET_TCP_SERVER_H_
+#ifndef KEUNLAS_BENET_TCP_SERVER_H_
+#define KEUNLAS_BENET_TCP_SERVER_H_
 
 #include <map>
 
@@ -25,13 +25,10 @@ class TcpServer : NotCopyableOrMovable {
   inline const InetAddress& addr() const { return listen_addr_; }
   inline const std::string& name() const { return name_; }
   inline EventLoop* loop() const { return loop_; }
-  inline std::shared_ptr<EventLoopThreadPool> threadpool() {
-    return thread_pool_;
-  }
+  inline auto threadpool() { return thread_pool_; }
 
+  void InitThreadsNumber(int n_threads);
   void Start();
-
-  void SetThreadNum(int num_threads);
 
   void BindThreadInitCallback(const std::function<void(EventLoop*)>& cb);
   void BindConnectionCallback(const ConnectionCallback& cb);
@@ -60,4 +57,4 @@ class TcpServer : NotCopyableOrMovable {
 
 }  // namespace benet
 
-#endif  // !BENET_TCP_SERVER_H_
+#endif  // !KEUNLAS_BENET_TCP_SERVER_H_
