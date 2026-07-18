@@ -22,14 +22,6 @@
 
 #include "benet/copy_move_policy.h"
 
-#ifndef BENET_BUFFER_INIT_SIZE
-#define BENET_BUFFER_INIT_SIZE (1024)  // default is 1 KiB
-#endif
-
-#ifndef BENET_BUFFER_CHEAP_PREPEND_SIZE
-#define BENET_BUFFER_CHEAP_PREPEND_SIZE (8)  // default is 8 Bytes
-#endif
-
 namespace benet {
 
 ///
@@ -45,8 +37,8 @@ namespace benet {
 
 class Buffer : Copyable {
  public:
-  static constexpr size_t kCheapPrepend = BENET_BUFFER_CHEAP_PREPEND_SIZE;
-  static constexpr size_t kInitialSize = BENET_BUFFER_INIT_SIZE;
+  static constexpr size_t kCheapPrepend = 8;      // 8Bytes
+  static constexpr size_t kInitialSize = 1024;    // 1KiB
   static constexpr size_t kExtraBufSize = 65536;  // 64KiB
   static constexpr auto kCRLF = "\r\n";
 
