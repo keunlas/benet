@@ -21,6 +21,7 @@ int accept(int sockfd, sockaddr_storage* addr);
 ssize_t read(int sockfd, void* buf, size_t count);
 ssize_t readv(int sockfd, const iovec* iov, int iovcnt);
 ssize_t write(int sockfd, const void* buf, size_t count);
+ssize_t send(int sockfd, const void* buf, size_t count);
 
 void close(int sockfd);
 void shutdown_write(int sockfd);

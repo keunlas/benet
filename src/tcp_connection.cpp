@@ -81,7 +81,7 @@ void TcpConnection::send_in_loop(const void* msg, size_t len) {
   // send directly, when no write event AND no data in output buffer
 
   if (!channel_->IsWriteEvent() && output_buffer_.ReadableBytes() == 0) {
-    n_wrote = ::write(channel_->fd(), msg, len);
+    n_wrote = ::send(channel_->fd(), msg, len, MSG_NOSIGNAL);
 
     if (n_wrote >= 0) {
       n_remaining = len - n_wrote;
@@ -234,8 +234,8 @@ void TcpConnection::handle_write() {
     return;
   }
 
-  ssize_t n = ::write(channel_->fd(), output_buffer_.Peek(),
-                      output_buffer_.ReadableBytes());
+  ssize_t n = ::send(channel_->fd(), output_buffer_.Peek(),
+                     output_buffer_.ReadableBytes(), MSG_NOSIGNAL);
 
   if (n <= 0) {
     if (errno == EAGAIN || errno == EWOULDBLOCK) {

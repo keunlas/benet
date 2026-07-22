@@ -97,6 +97,10 @@ ssize_t write(int sockfd, const void* buf, size_t count) {
   return ::write(sockfd, buf, count);
 }
 
+ssize_t send(int sockfd, const void* buf, size_t count) {
+  return ::send(sockfd, buf, count, MSG_NOSIGNAL);
+}
+
 void close(int sockfd) {
   if (::close(sockfd) < 0) {
     BELOG_ERROR("Failed to close sockfd {}, errno {}: {}", sockfd, errno,
