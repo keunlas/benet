@@ -1,5 +1,6 @@
 #define SPDLOG_ACTIVE_LEVEL SPDLOG_LEVEL_DEBUG
 //
+#include "benet.h"
 #include "benet/logger.h"
 #include "benet/tcp_server.h"
 //
@@ -7,10 +8,6 @@
 #include <spdlog/sinks/stdout_color_sinks.h>
 
 using namespace benet;
-
-void InitBenet() {
-  benet::Logger::AsyncConsoleLogger()->set_level(spdlog::level::warn);
-}
 
 class EchoServer {
  public:
@@ -28,8 +25,7 @@ class EchoServer {
     server_.BindMessageCallback(
         std::bind(&EchoServer::on_message, this, _1, _2, _3));
 
-    server_.loop()->RunEvery(5,
-                             std::bind(&EchoServer::print_throughput, this));
+    server_.loop()->RunEvery(5, std::bind(&EchoServer::print_throughput, this));
   }
 
   void Start(int n_threads) {
@@ -82,7 +78,9 @@ class EchoServer {
 };
 
 int main() {
-  InitBenet();
+  benet::init::InitLogLevel(3);
+  benet::init::IgnoreSigpipe();
+
   EventLoop loop;
   InetAddress addr(8080);
   EchoServer svr(&loop, addr);

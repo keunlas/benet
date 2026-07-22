@@ -6,6 +6,14 @@
 #ifndef KEUNLAS_BENET_H_
 #define KEUNLAS_BENET_H_
 
-namespace benet {}  // namespace benet
+namespace benet::init {
+
+/// @brief trace to critical is 0-5, off is 6
+void InitLogLevel(int level);
+
+/// @brief to ignore SIGPIPE
+void IgnoreSigpipe();
+
+}  // namespace benet::init
 
 #endif  // !KEUNLAS_BENET_H_
