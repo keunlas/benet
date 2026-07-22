@@ -7,6 +7,8 @@
 #include <spdlog/async.h>
 #include <spdlog/sinks/stdout_color_sinks.h>
 
+#include <iostream>
+
 using namespace benet;
 
 class EchoServer {
@@ -25,7 +27,7 @@ class EchoServer {
     server_.BindMessageCallback(
         std::bind(&EchoServer::on_message, this, _1, _2, _3));
 
-    server_.loop()->RunEvery(5, std::bind(&EchoServer::print_throughput, this));
+    server_.loop()->RunEvery(2, std::bind(&EchoServer::print_throughput, this));
   }
 
   void Start(int n_threads) {
@@ -59,8 +61,8 @@ class EchoServer {
     auto time_gap = std::chrono::duration_cast<std::chrono::seconds>(
         now - last_print_time_);
 
-    SPDLOG_LOGGER_INFO(
-        logger_, "{:.3f} MiB/s, {:.3f} KiMsgs/s, {:.0f} bytes/msg",
+    std::cout << std::format(
+        "[Status] {:.3f} MiB/s, {:.3f} KiMsgs/s, {:.0f} bytes/msg\n",
         static_cast<double>(bytes) / time_gap.count() / 1024 / 1024,
         static_cast<double>(msgs) / time_gap.count() / 1024,
         msgs == 0 ? 0 : static_cast<double>(bytes) / static_cast<double>(msgs));

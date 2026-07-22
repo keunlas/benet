@@ -8,7 +8,7 @@
 #include <string>
 
 /// 每条消息的字节数。
-std::atomic<size_t> g_msg_size{1024 * 63};
+std::atomic<size_t> g_msg_size{1024 * 64};
 
 /// 设置为 true 可优雅停止客户端。
 std::atomic<bool> g_stop{false};
