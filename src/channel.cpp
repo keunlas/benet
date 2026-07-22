@@ -43,7 +43,7 @@ void Channel::HandleEvent(TimePoint recv_time) {
   {
     // Conduct error (errno will be set)
     if (revents_ & EPOLLERR) {
-      BELOG_WARN("EPOLLERR: '{}' occured in fd {}", ERRNO_MSG, fd_);
+      BELOG_WARN("EPOLLERR occured in fd {}", fd_);
       if (on_error_) on_error_();
     }
 

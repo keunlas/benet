@@ -90,7 +90,7 @@ void TcpConnection::send_in_loop(const void* msg, size_t len) {
       }
     } else {
       n_wrote = 0;
-      if (errno != EAGAIN || errno != EWOULDBLOCK) {
+      if (errno != EAGAIN && errno != EWOULDBLOCK) {
         BELOG_ERROR("Failed send directly in loop: {}", ERRNO_MSG);
         if (errno == EINTR) {
           // [TODO] retry to send
@@ -283,6 +283,13 @@ void TcpConnection::handle_close() {
 
   set_state(State::Disconnected);
   channel_->DisableAllEvent();
+
+  int so_error = sockets::get_socket_error(channel_->fd());
+  BELOG_DEBUG(
+      "TcpConnection at sockfd {} is handling close, "
+      "errno {}: {}, "
+      "SO_ERROR {}: {}",
+      channel_->fd(), errno, ERRNO_MSG, so_error, ERRCODE_MSG(so_error));
 
   TcpConnectionPtr guard(shared_from_this());
   on_connection_(guard);

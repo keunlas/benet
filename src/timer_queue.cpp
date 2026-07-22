@@ -127,6 +127,7 @@ void TimerQueue::CancelTimer(TimerWeakPtr timer_wk) {
     if (!timer) return;
     if (timers_.find({timer->expiration(), timer}) != timers_.end()) {
       size_t n = timers_.erase(TimerEntry(timer->expiration(), timer));
+      (void)n;
       assert(n == 1);
     } else if (calling_expired_timers_.load() == true) {
       canceling_timers_.insert(timer);
@@ -145,6 +146,7 @@ bool TimerQueue::insert(TimerPtr timer) {
   }
 
   auto result = timers_.insert({when, timer});
+  (void)result;
   assert(result.second);
 
   return earliest_changed;
